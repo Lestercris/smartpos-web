@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SmartPOS - Punto de Venta</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+    <header>
+        <h1>SmartPOS</h1>
+        <div id="connection-status" class="status disconnected">Desconectado</div>
+    </header>
+
+    <main>
+        <div class="pos-container">
+            <!-- Panel Izquierdo: Carrito -->
+            <div class="cart-panel">
+                <h2>Carrito de Venta</h2>
+                <div class="input-group">
+                    <input type="text" id="posCode" placeholder="Escanee o escriba el código..." autofocus>
+                    <button onclick="agregarProducto()">+ Agregar</button>
+                </div>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Código</th>
+                            <th>Producto</th>
+                            <th>Precio</th>
+                            <th>Cant.</th>
+                            <th>Total</th>
+                            <th></th>
+                        </tr>
+                    </thead>
+                    <tbody id="cartBody">
+                        <tr><td colspan="6" class="empty">Carrito vacío</td></tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Panel Derecho: Totales -->
+            <div class="totals-panel">
+                <h2>Resumen</h2>
+                <div class="total-row"><span>Subtotal:</span><span id="tSub">$0.00</span></div>
+                <div class="total-row"><span>IVA (18%):</span><span id="tIva">$0.00</span></div>
+                <div class="total-row big"><span>TOTAL:</span><span id="tTot">$0.00</span></div>
+                <button class="btn-cobrar" onclick="cobrar()">COBRAR</button>
+            </div>
+        </div>
+    </main>
+
+    <!-- Nuestros módulos -->
+    <script src="js/db.js"></script>
+    <script src="js/pos.js"></script>
+    <script src="js/realtime.js"></script>
+</body>
+</html>
