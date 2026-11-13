@@ -1,5 +1,5 @@
 // ⚠️ PEGA AQUÍ TUS CREDENCIALES DE SUPABASE ⚠️
-const SUPABASE_URL = 'https://aqkwuossogrllatyhrfz.supabase.co';
+const SUPABASE_URL = 'https://aqkwuwsogrrllatyhrfz.supabase.co';
 const SUPABASE_ANON_KEY = 'sb_publishable_GnsebOkP_46qA05Q-r20cA_mKQjuFwX';
 
 // Inicializar Supabase
