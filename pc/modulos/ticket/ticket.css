@@ -1,0 +1,109 @@
+/* Fondo oscuro del modal */
+.ticket-modal-bg {
+    display: none; /* Oculto por defecto */
+    position: fixed;
+    top: 0; left: 0; width: 100%; height: 100%;
+    background: rgba(15, 23, 42, 0.8);
+    z-index: 9999;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+}
+
+.ticket-modal-bg.active {
+    display: flex;
+}
+
+/* Contenedor del modal */
+.ticket-container {
+    background: #f8fafc;
+    border-radius: 12px;
+    width: 100%;
+    max-width: 400px;
+    max-height: 90vh;
+    display: flex;
+    flex-direction: column;
+    box-shadow: 0 10px 25px rgba(0,0,0,0.5);
+    overflow: hidden;
+}
+
+.ticket-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 15px 20px;
+    background: #0f172a;
+    color: white;
+}
+
+.ticket-header h2 {
+    font-size: 1.2rem;
+    margin: 0;
+}
+
+/* Estilos del ticket (formato recibo) */
+.ticket-receipt {
+    background: white;
+    padding: 20px;
+    font-family: 'Courier New', Courier, monospace;
+    color: #000;
+    overflow-y: auto;
+    font-size: 13px;
+}
+
+.ticket-center { text-align: center; }
+.ticket-receipt h3 { margin: 0 0 5px 0; font-size: 16px; }
+.ticket-receipt p { margin: 2px 0; }
+
+.ticket-info { margin: 15px 0; font-size: 12px; }
+
+.ticket-receipt hr {
+    border: none;
+    border-top: 1px dashed #000;
+    margin: 10px 0;
+}
+
+.ticket-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 12px;
+}
+
+.ticket-table th { text-align: left; border-bottom: 1px dashed #000; padding-bottom: 5px; }
+.ticket-table td { padding: 5px 0; vertical-align: top; }
+.ticket-table th:nth-child(1), .ticket-table td:nth-child(1) { width: 15%; }
+.ticket-table th:nth-child(2), .ticket-table td:nth-child(2) { width: 60%; }
+.ticket-table th:nth-child(3), .ticket-table td:nth-child(3) { width: 25%; text-align: right; }
+
+.ticket-totales { margin-top: 10px; }
+.ticket-row { display: flex; justify-content: space-between; margin-bottom: 5px; }
+.ticket-total { font-weight: bold; font-size: 16px; margin-top: 10px; }
+
+.ticket-footer { margin-top: 15px; font-size: 11px; }
+
+.ticket-actions {
+    padding: 15px;
+    background: #f1f5f9;
+    text-align: center;
+    border-top: 1px solid #e2e8f0;
+}
+
+/* ================= REGLAS DE IMPRESIÓN ================= */
+@media print {
+    body * {
+        visibility: hidden;
+    }
+    #ticket-print-area, #ticket-print-area * {
+        visibility: visible;
+    }
+    #ticket-print-area {
+        position: absolute;
+        left: 0;
+        top: 0;
+        width: 100%;
+        padding: 0;
+    }
+    .no-print {
+        display: none !important;
+    }
+}

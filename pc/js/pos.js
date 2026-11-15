@@ -131,15 +131,21 @@ document.addEventListener('DOMContentLoaded', () => {
         renderCarrito();
     };
 
-    // ==================== LÓGICA DE COBRO (RPC) ====================
+    // ==================== LÓGICA DE COBRO (RPC) Y TICKET ====================
     window.cobrar = async function() {
         if (carrito.length === 0) {
             mostrarNotificacion('El carrito está vacío', 'error');
             return;
         }
 
-        // Preparamos los datos para enviar (solo ID y cantidad)
-        const items = carrito.map(item => ({
+        // 1. GUARDAMOS UNA COPIA DEL CARRITO ANTES DE VACIARLO
+        const carritoCopia = carrito.map(item => ({ ...item }));
+        const subtotal = carritoCopia.reduce((sum, item) => sum + (item.precio * item.cantidad), 0);
+        const iva = subtotal * IVA_RATE;
+        const total = subtotal + iva;
+
+        // Preparamos los datos para enviar a la función de Supabase
+        const items = carritoCopia.map(item => ({
             id: item.id,
             cantidad: item.cantidad
         }));
@@ -147,29 +153,41 @@ document.addEventListener('DOMContentLoaded', () => {
         try {
             mostrarNotificacion('Procesando venta...', 'success');
 
-            // Llamamos a la función RPC de Supabase
+            // 2. LLAMAMOS A LA FUNCIÓN RPC DE SUPABASE
             const { data, error } = await supabaseClient.rpc('realizar_venta', {
-                p_usuario: 'Vendedor Demo', // Más adelante lo cambiaremos por el usuario real
+                p_usuario: 'Vendedor Demo', 
                 p_items: items
             });
 
             if (error) throw error;
 
-            // Si todo sale bien:
-            mostrarNotificacion(`¡Venta #${data.venta_id} registrada con éxito!`, 'success');
+            mostrarNotificacion(`¡Venta #${data.venta_id} registrada!`, 'success');
             
-            // Vaciamos el carrito y actualizamos la vista
+            // 3. VACIAMOS EL CARRITO
             carrito = [];
             renderCarrito();
             
-            // Si la tabla de productos está visible, la recargamos para ver el stock actualizado
+            // 4. MOSTRAMOS EL TICKET
+            if (typeof moduloTicket !== 'undefined') {
+                moduloTicket.mostrar({
+                    id: data.venta_id,
+                    usuario: 'Vendedor Demo',
+                    items: carritoCopia,
+                    subtotal: subtotal,
+                    iva: iva,
+                    total: data.total // Usamos el total validado por la base de datos
+                });
+            } else {
+                console.warn('El módulo de ticket no está cargado.');
+            }
+
+            // Si la tabla de administración está visible, recargamos el stock
             if (!document.getElementById('product-management').classList.contains('hidden')) {
                 cargarProductosAdmin();
             }
 
         } catch (err) {
             console.error("Error al cobrar:", err);
-            // Mostramos el mensaje de error exacto (ej: si no hay stock)
             mostrarNotificacion('Error: ' + err.message, 'error');
         }
     };

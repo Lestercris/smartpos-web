@@ -1,0 +1,55 @@
+<div id="ticket-modal" class="ticket-modal-bg">
+    <div class="ticket-container">
+        <div class="ticket-header no-print">
+            <h2>Venta Exitosa</h2>
+            <button id="btnCerrarTicket" class="btn btn-danger">Cerrar</button>
+        </div>
+        
+        <!-- Área imprimible -->
+        <div id="ticket-print-area" class="ticket-receipt">
+            <div class="ticket-center">
+                <h3>SmartPOS</h3>
+                <p>Ticket de Venta</p>
+            </div>
+            
+            <div class="ticket-info">
+                <p><strong>Ticket #:</strong> <span id="tk-id">000</span></p>
+                <p><strong>Fecha:</strong> <span id="tk-fecha"></span></p>
+                <p><strong>Vendedor:</strong> <span id="tk-vendedor"></span></p>
+            </div>
+            
+            <hr>
+            
+            <table class="ticket-table">
+                <thead>
+                    <tr>
+                        <th>Cant</th>
+                        <th>Producto</th>
+                        <th>Total</th>
+                    </tr>
+                </thead>
+                <tbody id="tk-productos">
+                    <!-- Productos inyectados por JS -->
+                </tbody>
+            </table>
+            
+            <hr>
+            
+            <div class="ticket-totales">
+                <div class="ticket-row"><span>Subtotal:</span><span id="tk-subtotal">$0.00</span></div>
+                <div class="ticket-row"><span>IVA:</span><span id="tk-iva">$0.00</span></div>
+                <div class="ticket-row ticket-total"><span>TOTAL:</span><span id="tk-total">$0.00</span></div>
+            </div>
+            
+            <hr>
+            <div class="ticket-center ticket-footer">
+                <p>¡Gracias por su compra!</p>
+                <p>Conserve este ticket</p>
+            </div>
+        </div>
+
+        <div class="ticket-actions no-print">
+            <button id="btnImprimirTicket" class="btn btn-success">🖨️ Imprimir Ticket</button>
+        </div>
+    </div>
+</div>
