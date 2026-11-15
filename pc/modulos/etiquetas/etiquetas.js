@@ -105,3 +105,8 @@ document.addEventListener('DOMContentLoaded', async () => {
         window.close(); // Cierra esta pestaña
     });
 });
+@media print {
+    .cantidad-wrapper {
+        display: none !important;
+    }
+}
