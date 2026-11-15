@@ -41,13 +41,13 @@ header h1 {
 
 /* El video debe ocupar todo el fondo */
 #scanner-container video {
-    position: absolute;
+     position: absolute;
     top: 0;
     left: 0;
     width: 100% !important;
     height: 100% !important;
     object-fit: cover;
-    z-index: 1; /* Detrás del marco */
+    z-index: 999; /* TEMPORAL: Ponlo encima de todo para ver si Quagga lo lee */
 }
 
 /* Ocultar el canvas de Quagga y sus textos */
