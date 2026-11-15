@@ -90,22 +90,61 @@
                         <button class="btn btn-warning" onclick="abrirGeneradorEtiquetas()">🖨️ Etiquetas</button>
                     </div>
                     
+                    <!-- Formulario con etiquetas -->
                     <div class="form-grid-productos">
-                        <input type="text" id="newCodigo" placeholder="Código">
-                        <input type="text" id="newNombre" placeholder="Nombre">
-                        <select id="newProveedor"><option value="">Proveedor...</option></select>
-                        <select id="newCategoria"><option value="">Categoría...</option></select>
-                        <select id="newSubcategoria"><option value="">Subcategoría...</option></select>
-                        <select id="newMedidaSelect"><option value="">U. Medida...</option></select>
-                        <select id="newUbicacion"><option value="">Ubicación...</option></select>
+                        <div class="form-field">
+                            <label>Código</label>
+                            <input type="text" id="newCodigo" placeholder="Ej: 8480013525103">
+                        </div>
+                        <div class="form-field">
+                            <label>Producto</label>
+                            <input type="text" id="newNombre" placeholder="Ej: Leche Entera 1L">
+                        </div>
+                        <div class="form-field">
+                            <label>Proveedor</label>
+                            <select id="newProveedor"><option value="">Seleccione...</option></select>
+                        </div>
+                        <div class="form-field">
+                            <label>Categoría</label>
+                            <select id="newCategoria"><option value="">Seleccione...</option></select>
+                        </div>
+                        <div class="form-field">
+                            <label>Subcategoría</label>
+                            <select id="newSubcategoria"><option value="">Seleccione...</option></select>
+                        </div>
+                        <div class="form-field">
+                            <label>U. Medida</label>
+                            <select id="newMedidaSelect"><option value="">Seleccione...</option></select>
+                        </div>
+                        <div class="form-field">
+                            <label>Ubicación</label>
+                            <select id="newUbicacion"><option value="">Seleccione...</option></select>
+                        </div>
                         
-                        <input type="number" id="newStockMin" placeholder="Stock Mínimo" value="0">
-                        <input type="number" id="newStock" placeholder="Stock Actual" value="0">
-                        <input type="number" id="newPrecioCompra" placeholder="P. Compra" step="0.01" value="0">
-                        <input type="number" id="newPrecio" placeholder="P. Venta" step="0.01">
+                        <div class="form-field">
+                            <label>Stock Mínimo</label>
+                            <input type="number" id="newStockMin" placeholder="0">
+                        </div>
+                        <div class="form-field">
+                            <label>Stock Actual</label>
+                            <input type="number" id="newStock" placeholder="0">
+                        </div>
+                        <div class="form-field">
+                            <label>Precio Compra</label>
+                            <input type="number" id="newPrecioCompra" placeholder="0.00" step="0.01">
+                        </div>
+                        <div class="form-field">
+                            <label>Precio Venta</label>
+                            <input type="number" id="newPrecio" placeholder="0.00" step="0.01">
+                        </div>
                         
-                        <input type="file" id="newImagen" accept="image/*" class="input-file">
-                        <button class="btn btn-primary" onclick="guardarProducto()">+ Añadir</button>
+                        <div class="form-field">
+                            <label>Imagen</label>
+                            <input type="file" id="newImagen" accept="image/*" class="input-file">
+                        </div>
+                        <div class="form-field btn-field">
+                            <button class="btn btn-primary" onclick="guardarProducto()">+ Añadir</button>
+                        </div>
                     </div>
 
                     <div class="table-responsive">
@@ -128,7 +167,7 @@
                                 </tr>
                             </thead>
                             <tbody id="productTableBody">
-                                <!-- Productos -->
+                                <!-- Productos cargados por JS -->
                             </tbody>
                         </table>
                     </div>
@@ -137,12 +176,29 @@
                 <!-- ================= PESTAÑA: CLIENTES ================= -->
                 <div id="tab-clientes" class="tab-content">
                     <div class="form-grid mb-20">
-                        <select id="cliTipoDoc"><option value="">Tipo...</option></select>
-                        <input type="text" id="cliDoc" placeholder="RUC / DNI">
-                        <input type="text" id="cliNombre" placeholder="Nombre / Razón Social">
-                        <input type="text" id="cliTelefono" placeholder="Teléfono">
-                        <input type="text" id="cliDireccion" placeholder="Dirección">
-                        <button class="btn btn-primary" onclick="guardarCliente()">+ Añadir</button>
+                        <div class="form-field">
+                            <label>Tipo Doc</label>
+                            <select id="cliTipoDoc"><option value="">Tipo...</option></select>
+                        </div>
+                        <div class="form-field">
+                            <label>N Doc</label>
+                            <input type="text" id="cliDoc" placeholder="RUC / DNI">
+                        </div>
+                        <div class="form-field">
+                            <label>Nombre</label>
+                            <input type="text" id="cliNombre" placeholder="Nombre / Razón Social">
+                        </div>
+                        <div class="form-field">
+                            <label>Teléfono</label>
+                            <input type="text" id="cliTelefono" placeholder="Teléfono">
+                        </div>
+                        <div class="form-field">
+                            <label>Dirección</label>
+                            <input type="text" id="cliDireccion" placeholder="Dirección">
+                        </div>
+                        <div class="form-field btn-field">
+                            <button class="btn btn-primary" onclick="guardarCliente()">+ Añadir</button>
+                        </div>
                     </div>
                     <table class="data-table">
                         <thead><tr><th>Doc</th><th>Nombre</th><th>Teléfono</th><th>Dirección</th><th></th></tr></thead>
@@ -153,12 +209,29 @@
                 <!-- ================= PESTAÑA: PROVEEDORES ================= -->
                 <div id="tab-proveedores" class="tab-content">
                     <div class="form-grid mb-20">
-                        <select id="provTipoDoc"><option value="">Tipo...</option></select>
-                        <input type="text" id="provDoc" placeholder="RUC / DNI">
-                        <input type="text" id="provNombre" placeholder="Razón Social">
-                        <input type="text" id="provTelefono" placeholder="Teléfono">
-                        <input type="text" id="provContacto" placeholder="Contacto">
-                        <button class="btn btn-primary" onclick="guardarProveedor()">+ Añadir</button>
+                        <div class="form-field">
+                            <label>Tipo Doc</label>
+                            <select id="provTipoDoc"><option value="">Tipo...</option></select>
+                        </div>
+                        <div class="form-field">
+                            <label>N Doc</label>
+                            <input type="text" id="provDoc" placeholder="RUC / DNI">
+                        </div>
+                        <div class="form-field">
+                            <label>Razón Social</label>
+                            <input type="text" id="provNombre" placeholder="Razón Social">
+                        </div>
+                        <div class="form-field">
+                            <label>Teléfono</label>
+                            <input type="text" id="provTelefono" placeholder="Teléfono">
+                        </div>
+                        <div class="form-field">
+                            <label>Contacto</label>
+                            <input type="text" id="provContacto" placeholder="Contacto">
+                        </div>
+                        <div class="form-field btn-field">
+                            <button class="btn btn-primary" onclick="guardarProveedor()">+ Añadir</button>
+                        </div>
                     </div>
                     <table class="data-table">
                         <thead><tr><th>Doc</th><th>Nombre</th><th>Contacto</th><th>Teléfono</th><th></th></tr></thead>
@@ -217,7 +290,7 @@
         </section>
     </main>
 
-    <!-- Nuestros scripts -->
+    <!-- Nuestros scripts (El orden importa) -->
     <script src="js/db.js"></script>
     <script src="js/pos.js"></script>
     <script src="js/realtime.js"></script>
