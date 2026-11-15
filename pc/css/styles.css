@@ -106,7 +106,7 @@ main {
     border-bottom: 1px solid #e2e8f0;
 }
 
-/* ================= INPUT GROUP (Búsqueda rápida) ================= */
+/* ================= INPUT GROUP (Búsqueda rápida POS) ================= */
 .input-group {
     display: flex;
     gap: 10px;
@@ -238,7 +238,7 @@ main {
     padding: 20px;
     border-radius: 8px;
     margin-bottom: 20px;
-    align-items: end; /* Alinea los inputs al fondo */
+    align-items: end; 
 }
 
 .form-field {
@@ -286,6 +286,27 @@ main {
 .btn-field button {
     width: 100%;
     height: 42px;
+}
+
+/* ================= NUEVA CLASE: INPUT-ROW ================= */
+/* Para poner un input y un botón uno al lado del otro */
+.input-row {
+    display: flex;
+    gap: 8px;
+    width: 100%;
+}
+.input-row input {
+    flex: 1;
+    padding: 10px;
+    border: 1px solid #cbd5e1;
+    border-radius: 6px;
+    font-size: 14px;
+    min-width: 0; /* Evita desbordamiento */
+}
+.input-row button {
+    flex: 0 0 auto;
+    height: 40px;
+    padding: 0 15px;
 }
 
 /* ================= NOTIFICACIONES (TOAST) ================= */
@@ -352,17 +373,34 @@ main {
     padding: 15px;
     border-radius: 8px;
     border: 1px solid #e2e8f0;
+    display: flex;
+    flex-direction: column;
 }
 .card-inner h3 {
     font-size: 15px;
     margin-bottom: 15px;
     color: #0f172a;
 }
+
+/* Estilos específicos para los formularios dentro de las tarjetas de Ajustes */
+.card-inner .form-field {
+    margin-bottom: 15px;
+}
+.card-inner .form-field select {
+    width: 100%;
+    padding: 10px;
+    border: 1px solid #cbd5e1;
+    border-radius: 6px;
+    font-size: 14px;
+    background: white;
+}
+
 .list-group {
     list-style: none;
     padding: 0;
     max-height: 300px;
     overflow-y: auto;
+    flex: 1; /* Ocupa el espacio restante */
 }
 .list-group li {
     background: white;
@@ -374,19 +412,4 @@ main {
     justify-content: space-between;
     align-items: center;
     font-size: 14px;
-}
-/* Ajuste para los inputs dentro de las tarjetas de Ajustes */
-.card-inner .input-group {
-    display: flex;
-    gap: 5px;
-    flex-wrap: wrap; 
-    width: 100%;
-}
-.card-inner .input-group input,
-.card-inner .input-group select {
-    min-width: 0;
-    flex: 1 1 auto;
-}
-.card-inner .input-group button {
-    flex: 0 0 auto;
 }
