@@ -1,32 +1,25 @@
-<!DOCTYPE html>
-<html lang="es">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>SmartPOS - Escáner Móvil</title>
-    
-    <!-- Librerías externas -->
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@ericblade/quagga2@1.8.4/dist/quagga.min.js"></script>
-    
-    <!-- Nuestro diseño -->
-    <link rel="stylesheet" href="css/styles.css">
-</head>
+<!-- ... (el resto del head se queda igual) ... -->
 <body>
-    <h1>📷 Escáner SmartPOS</h1>
+    <header>
+        <h1>📷 SmartPOS</h1>
+    </header>
     
-    <div id="scanner-container"></div>
+    <div id="scanner-container">
+        <!-- El marco de guía con las esquinas -->
+        <div class="scan-frame">
+            <div class="corner-bottom"></div>
+            <div class="scan-line"></div>
+        </div>
+        <div id="result"></div>
+    </div>
     
-    <div id="result">Apunta la cámara a un código de barras.</div>
-    
-    <div>
+    <div class="controls">
         <button id="startBtn" class="btn-start" onclick="startScanner()">▶ Iniciar Escáner</button>
         <button id="stopBtn" class="btn-stop" onclick="stopScanner()">⏹ Detener</button>
     </div>
     
-    <p class="hint">El código se enviará automáticamente a la PC en tiempo real.</p>
+    <p class="hint">Apunta el código dentro del marco</p>
 
-    <!-- Nuestra lógica -->
     <script src="js/sync.js"></script>
 </body>
 </html>
