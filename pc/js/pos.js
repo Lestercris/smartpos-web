@@ -255,3 +255,8 @@ async function eliminarProducto(id) {
 
     cargarProductosAdmin();
 }
+
+function abrirGeneradorEtiquetas() {
+    // Abre el index.html del módulo en una pestaña nueva
+    window.open('modulos/etiquetas/index.html', '_blank');
+}

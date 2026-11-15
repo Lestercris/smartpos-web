@@ -7,11 +7,9 @@
     
     <!-- Librerías base -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.6/dist/JsBarcode.all.min.js"></script>
 
     <!-- Estilos -->
     <link rel="stylesheet" href="css/styles.css">
-    <link rel="stylesheet" href="modulos/etiquetas/etiquetas.css">
 </head>
 <body>
     <header>
@@ -62,11 +60,16 @@
     <!-- Sección de Administración de Productos (Oculta por defecto) -->
     <section id="product-management" style="display: none; padding: 20px;">
         <div style="max-width: 1200px; margin: 0 auto; background: white; padding: 20px; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
+            
+            <!-- ENCABEZADO CON LOS BOTONES -->
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
                 <h2>Gestión de Productos</h2>
                 <div style="display: flex; gap: 10px;">
-                    <!-- Este botón llama a la función del módulo de etiquetas -->
-                    <button onclick="moduloEtiquetas.abrir()" style="background: #f59e0b; color: white; border: none; padding: 10px 20px; border-radius: 8px; cursor: pointer;">🖨️ Generar Etiquetas</button>
+                    
+                    <!-- ESTE ES EL BOTÓN QUE ABRE LA NUEVA PESTAÑA -->
+                    <button onclick="abrirGeneradorEtiquetas()" style="background: #f59e0b; color: white; border: none; padding: 10px 20px; border-radius: 8px; cursor: pointer;">🖨️ Generar Etiquetas</button>
+                    
+                    <!-- BOTÓN PARA VOLVER AL POS -->
                     <button onclick="cerrarAdmin()" style="background: #dc2626; color: white; border: none; padding: 10px 20px; border-radius: 8px; cursor: pointer;">Volver al POS</button>
                 </div>
             </div>
@@ -98,24 +101,9 @@
         </div>
     </section>
 
-    <!-- Aquí se inyectará el HTML del módulo de etiquetas -->
-    <div id="contenedor-modulos"></div>
-
-    <!-- Nuestros scripts (El orden importa) -->
+    <!-- Nuestros scripts -->
     <script src="js/db.js"></script>
     <script src="js/pos.js"></script>
     <script src="js/realtime.js"></script>
-    
-    <!-- Script del módulo de etiquetas -->
-    <script src="modulos/etiquetas/etiquetas.js"></script>
-    
-    <!-- Inicializador del módulo -->
-    <script>
-        document.addEventListener('DOMContentLoaded', () => {
-            if (typeof moduloEtiquetas !== 'undefined') {
-                moduloEtiquetas.init();
-            }
-        });
-    </script>
 </body>
 </html>

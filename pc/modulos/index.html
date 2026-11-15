@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Generador de Etiquetas - SmartPOS</title>
+    
+    <!-- Librería para los códigos de barras -->
+    <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.6/dist/JsBarcode.all.min.js"></script>
+    
+    <!-- Estilos del módulo -->
+    <link rel="stylesheet" href="etiquetas.css">
+</head>
+<body>
+    <div class="etiquetas-header no-print">
+        <h2>🖨️ Generador de Etiquetas</h2>
+        <div class="etiquetas-acciones">
+            <button id="btnImprimirEtiquetas" class="btn-accion btn-primary">Imprimir</button>
+            <button id="btnCerrarEtiquetas" class="btn-accion btn-danger">Cerrar Ventana</button>
+        </div>
+    </div>
+    
+    <div id="etiquetas-container" class="etiquetas-grid">
+        <!-- Las etiquetas se generan aquí -->
+    </div>
+
+    <!-- Script del módulo -->
+    <script src="etiquetas.js"></script>
+</body>
+</html>
