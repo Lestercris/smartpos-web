@@ -90,7 +90,7 @@
                         <button class="btn btn-warning" onclick="abrirGeneradorEtiquetas()">🖨️ Etiquetas</button>
                     </div>
                     
-                    <!-- Formulario con etiquetas -->
+                    <!-- Formulario de Productos -->
                     <div class="form-grid-productos">
                         <div class="form-field">
                             <label>Código</label>
@@ -252,6 +252,19 @@
                             <ul id="listaCategorias" class="list-group"></ul>
                         </div>
                         
+                        <!-- Subcategorías -->
+                        <div class="card-inner">
+                            <h3>Subcategorías</h3>
+                            <div class="input-group mb-20" style="display: flex; gap: 5px; flex-wrap: wrap;">
+                                <select id="newSubCatPadre" style="flex: 1 1 100%; margin-bottom: 5px; padding: 10px; border: 1px solid #cbd5e1; border-radius: 6px;">
+                                    <option value="">Categoría padre...</option>
+                                </select>
+                                <input type="text" id="newSubCatNombre" placeholder="Nombre subcategoría" style="flex: 2; padding: 10px; border: 1px solid #cbd5e1; border-radius: 6px;">
+                                <button class="btn btn-primary" onclick="guardarSubcategoria()">+</button>
+                            </div>
+                            <ul id="listaSubcategorias" class="list-group"></ul>
+                        </div>
+
                         <!-- Ubicaciones -->
                         <div class="card-inner">
                             <h3>Ubicaciones</h3>
@@ -265,9 +278,9 @@
                         <!-- Unidades de Medida -->
                         <div class="card-inner">
                             <h3>Unidades de Medida</h3>
-                            <div class="input-group mb-20" style="display: flex; gap: 5px;">
-                                <input type="text" id="newUMedNombre" placeholder="Nombre (Ej: Kilogramo)" style="flex: 2;">
-                                <input type="text" id="newUMedAbrev" placeholder="Abrev (Ej: KG)" style="flex: 1;">
+                            <div class="input-group mb-20" style="display: flex; gap: 5px; flex-wrap: wrap;">
+                                <input type="text" id="newUMedNombre" placeholder="Nombre (Ej: Kilogramo)" style="flex: 2; padding: 10px; border: 1px solid #cbd5e1; border-radius: 6px;">
+                                <input type="text" id="newUMedAbrev" placeholder="Abrev (Ej: KG)" style="flex: 1; padding: 10px; border: 1px solid #cbd5e1; border-radius: 6px;">
                                 <button class="btn btn-primary" onclick="guardarUMedida()">+</button>
                             </div>
                             <ul id="listaUMedidas" class="list-group"></ul>
@@ -276,9 +289,9 @@
                         <!-- Tipos de Documento -->
                         <div class="card-inner">
                             <h3>Tipos de Documento</h3>
-                            <div class="input-group mb-20" style="display: flex; gap: 5px;">
-                                <input type="text" id="newTipoDocNombre" placeholder="Nombre (Ej: Pasaporte)" style="flex: 2;">
-                                <input type="text" id="newTipoDocAbrev" placeholder="Abrev (Ej: PAS)" style="flex: 1;">
+                            <div class="input-group mb-20" style="display: flex; gap: 5px; flex-wrap: wrap;">
+                                <input type="text" id="newTipoDocNombre" placeholder="Nombre (Ej: Pasaporte)" style="flex: 2; padding: 10px; border: 1px solid #cbd5e1; border-radius: 6px;">
+                                <input type="text" id="newTipoDocAbrev" placeholder="Abrev (Ej: PAS)" style="flex: 1; padding: 10px; border: 1px solid #cbd5e1; border-radius: 6px;">
                                 <button class="btn btn-primary" onclick="guardarTipoDoc()">+</button>
                             </div>
                             <ul id="listaTiposDoc" class="list-group"></ul>
