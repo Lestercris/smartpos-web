@@ -375,3 +375,18 @@ main {
     align-items: center;
     font-size: 14px;
 }
+/* Ajuste para los inputs dentro de las tarjetas de Ajustes */
+.card-inner .input-group {
+    display: flex;
+    gap: 5px;
+    flex-wrap: wrap; 
+    width: 100%;
+}
+.card-inner .input-group input,
+.card-inner .input-group select {
+    min-width: 0;
+    flex: 1 1 auto;
+}
+.card-inner .input-group button {
+    flex: 0 0 auto;
+}
