@@ -206,12 +206,12 @@ async function guardarProducto() {
 
     // Validaciones de seguridad
     if (!codigo || !nombre || isNaN(precio) || isNaN(stock)) {
-        alert('Por favor, rellena todos los campos correctamente.');
+        mostrarNotificacion('Por favor, rellena todos los campos correctamente.', 'error');
         return;
     }
 
     if (!/^[a-zA-Z0-9\-]+$/.test(codigo)) {
-        alert('El código solo puede contener letras, números y guiones.');
+        mostrarNotificacion('El código solo puede contener letras, números y guiones.', 'error');
         return;
     }
 
@@ -222,10 +222,14 @@ async function guardarProducto() {
 
     if (error) {
         console.error('Error al guardar:', error);
-        if (error.code === '23505') { // Código de error para UNIQUE violation
-            alert('Ese código de producto ya existe.');
+        
+        // Mensaje de error legible según el código de error de Supabase
+        if (error.code === '23505') { // UNIQUE violation
+            mostrarNotificacion('Ese código de producto ya existe.', 'error');
+        } else if (error.code === '42501') { // RLS violation
+            mostrarNotificacion('Error de permisos. Revisa las políticas RLS de Supabase.', 'error');
         } else {
-            alert('Error al guardar el producto.');
+            mostrarNotificacion('Error al guardar: ' + error.message, 'error');
         }
         return;
     }
@@ -236,7 +240,47 @@ async function guardarProducto() {
     document.getElementById('newPrecio').value = '';
     document.getElementById('newStock').value = '';
     
+    mostrarNotificacion('Producto añadido correctamente', 'success');
     cargarProductosAdmin();
+}
+
+// Función auxiliar para notificaciones elegantes (Toasts)
+function mostrarNotificacion(mensaje, tipo) {
+    // Si ya existe una notificación, la eliminamos
+    let toast = document.getElementById('smartpos-toast');
+    if (toast) toast.remove();
+
+    toast = document.createElement('div');
+    toast.id = 'smartpos-toast';
+    
+    // Estilos en línea para no depender de CSS externo (aunque luego lo movemos)
+    toast.style.position = 'fixed';
+    toast.style.top = '20px';
+    toast.style.left = '50%';
+    toast.style.transform = 'translateX(-50%)';
+    toast.style.padding = '12px 24px';
+    toast.style.borderRadius = '8px';
+    toast.style.color = 'white';
+    toast.style.fontWeight = 'bold';
+    toast.style.zIndex = '9999';
+    toast.style.boxShadow = '0 4px 12px rgba(0,0,0,0.15)';
+    toast.style.transition = 'opacity 0.3s ease';
+    toast.style.opacity = '1';
+    
+    if (tipo === 'error') {
+        toast.style.backgroundColor = '#dc2626';
+    } else {
+        toast.style.backgroundColor = '#16a34a';
+    }
+
+    toast.textContent = mensaje;
+    document.body.appendChild(toast);
+
+    // Desvanecer y eliminar después de 3 segundos
+    setTimeout(() => {
+        toast.style.opacity = '0';
+        setTimeout(() => toast.remove(), 300);
+    }, 3000);
 }
 
 async function eliminarProducto(id) {
