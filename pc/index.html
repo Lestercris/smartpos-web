@@ -12,13 +12,12 @@
 
     <!-- Estilos -->
     <link rel="stylesheet" href="css/styles.css">
-    <link rel="stylesheet" href="modulos/ticket/ticket.css">
 </head>
 <body>
     <header class="app-header">
         <h1>SmartPOS</h1>
         <div class="header-actions">
-            <button class="btn btn-primary" onclick="abrirAdmin()">⚙️ Productos</button>
+            <button class="btn btn-primary" onclick="abrirAdmin()">⚙️ Administración</button>
             <div id="connection-status" class="status disconnected">Desconectado</div>
         </div>
     </header>
@@ -61,50 +60,122 @@
         </div>
 
         <!-- ================= VISTA ADMINISTRACIÓN ================= -->
-        <section id="product-management" class="admin-section hidden">
+        <section id="admin-view" class="admin-section hidden">
             <div class="admin-card">
                 
                 <div class="admin-header">
-                    <h2>Gestión de Productos</h2>
+                    <h2>Administración</h2>
                     <div class="admin-actions">
-                        <!-- Botón para descargar la plantilla Excel -->
-                        <button class="btn btn-primary" onclick="descargarPlantillaExcel()">📄 Descargar Plantilla</button>
-                        
-                        <!-- Botones de importación/exportación -->
-                        <button class="btn btn-success" onclick="exportarProductosExcel()">📤 Exportar Excel</button>
-                        <button class="btn btn-purple" onclick="document.getElementById('fileInput').click()">📥 Importar Excel</button>
-                        <input type="file" id="fileInput" accept=".xlsx, .xls, .csv" class="hidden" onchange="importarProductosExcel(event)">
-                        
-                        <!-- Botón de etiquetas y volver -->
-                        <button class="btn btn-warning" onclick="abrirGeneradorEtiquetas()">🖨️ Etiquetas</button>
                         <button class="btn btn-danger" onclick="cerrarAdmin()">Volver al POS</button>
                     </div>
                 </div>
+
+                <!-- Pestañas de Navegación -->
+                <div class="tabs-nav">
+                    <button class="tab-btn active" data-tab="tab-productos" onclick="cambiarTab('tab-productos')">Productos</button>
+                    <button class="tab-btn" data-tab="tab-clientes" onclick="cambiarTab('tab-clientes')">Clientes</button>
+                    <button class="tab-btn" data-tab="tab-proveedores" onclick="cambiarTab('tab-proveedores')">Proveedores</button>
+                    <button class="tab-btn" data-tab="tab-ajustes" onclick="cambiarTab('tab-ajustes')">Categorías y Ubicaciones</button>
+                </div>
                 
-                <!-- Formulario para añadir producto manualmente -->
-                <div class="form-grid">
-                    <input type="text" id="newCodigo" placeholder="Código">
-                    <input type="text" id="newNombre" placeholder="Nombre del producto">
-                    <input type="number" id="newPrecio" placeholder="Precio" step="0.01">
-                    <input type="number" id="newStock" placeholder="Stock">
-                    <button class="btn btn-primary" onclick="guardarProducto()">+ Añadir</button>
+                <!-- ================= PESTAÑA: PRODUCTOS ================= -->
+                <div id="tab-productos" class="tab-content active">
+                    <div class="admin-actions mb-20">
+                        <button class="btn btn-primary" onclick="descargarPlantillaExcel()">📄 Plantilla</button>
+                        <button class="btn btn-success" onclick="exportarProductosExcel()">📤 Exportar</button>
+                        <button class="btn btn-purple" onclick="document.getElementById('fileInput').click()">📥 Importar</button>
+                        <input type="file" id="fileInput" accept=".xlsx, .xls, .csv" class="hidden" onchange="importarProductosExcel(event)">
+                        <button class="btn btn-warning" onclick="abrirGeneradorEtiquetas()">🖨️ Etiquetas</button>
+                    </div>
+                    
+                    <div class="form-grid-productos">
+                        <input type="text" id="newCodigo" placeholder="Código">
+                        <input type="text" id="newNombre" placeholder="Nombre">
+                        <input type="number" id="newPrecio" placeholder="P. Venta" step="0.01">
+                        <input type="number" id="newStock" placeholder="Stock">
+                        
+                        <!-- Campos nuevos -->
+                        <select id="newProveedor"><option value="">Proveedor...</option></select>
+                        <select id="newCategoria"><option value="">Categoría...</option></select>
+                        <select id="newSubcategoria"><option value="">Subcategoría...</option></select>
+                        <select id="newUbicacion"><option value="">Ubicación...</option></select>
+                        
+                        <input type="file" id="newImagen" accept="image/*" class="input-file">
+                        <button class="btn btn-primary" onclick="guardarProducto()">+ Añadir</button>
+                    </div>
+
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>Imagen</th>
+                                <th>Código</th>
+                                <th>Nombre</th>
+                                <th>Precio</th>
+                                <th>Stock</th>
+                                <th>Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody id="productTableBody">
+                            <!-- Productos -->
+                        </tbody>
+                    </table>
                 </div>
 
-                <!-- Tabla de productos -->
-                <table class="data-table">
-                    <thead>
-                        <tr>
-                            <th>Código</th>
-                            <th>Nombre</th>
-                            <th>Precio</th>
-                            <th>Stock</th>
-                            <th>Acciones</th>
-                        </tr>
-                    </thead>
-                    <tbody id="productTableBody">
-                        <!-- Aquí se cargarán los productos -->
-                    </tbody>
-                </table>
+                <!-- ================= PESTAÑA: CLIENTES ================= -->
+                <div id="tab-clientes" class="tab-content">
+                    <div class="form-grid mb-20">
+                        <input type="text" id="cliDoc" placeholder="RUC / DNI">
+                        <input type="text" id="cliNombre" placeholder="Nombre / Razón Social">
+                        <input type="text" id="cliTelefono" placeholder="Teléfono">
+                        <input type="text" id="cliDireccion" placeholder="Dirección">
+                        <button class="btn btn-primary" onclick="guardarCliente()">+ Añadir</button>
+                    </div>
+                    <table class="data-table">
+                        <thead><tr><th>Doc</th><th>Nombre</th><th>Teléfono</th><th>Dirección</th><th></th></tr></thead>
+                        <tbody id="clientesTableBody"></tbody>
+                    </table>
+                </div>
+
+                <!-- ================= PESTAÑA: PROVEEDORES ================= -->
+                <div id="tab-proveedores" class="tab-content">
+                    <div class="form-grid mb-20">
+                        <input type="text" id="provDoc" placeholder="RUC / DNI">
+                        <input type="text" id="provNombre" placeholder="Razón Social">
+                        <input type="text" id="provTelefono" placeholder="Teléfono">
+                        <input type="text" id="provContacto" placeholder="Contacto">
+                        <button class="btn btn-primary" onclick="guardarProveedor()">+ Añadir</button>
+                    </div>
+                    <table class="data-table">
+                        <thead><tr><th>Doc</th><th>Nombre</th><th>Contacto</th><th>Teléfono</th><th></th></tr></thead>
+                        <tbody id="proveedoresTableBody"></tbody>
+                    </table>
+                </div>
+
+                <!-- ================= PESTAÑA: CATEGORÍAS Y UBICACIONES ================= -->
+                <div id="tab-ajustes" class="tab-content">
+                    <div class="grid-2-cols">
+                        <!-- Categorías -->
+                        <div class="card-inner">
+                            <h3>Categorías</h3>
+                            <div class="input-group mb-20">
+                                <input type="text" id="newCatNombre" placeholder="Nueva categoría">
+                                <button class="btn btn-primary" onclick="guardarCategoria()">+</button>
+                            </div>
+                            <ul id="listaCategorias" class="list-group"></ul>
+                        </div>
+                        
+                        <!-- Ubicaciones -->
+                        <div class="card-inner">
+                            <h3>Ubicaciones de Almacén</h3>
+                            <div class="input-group mb-20">
+                                <input type="text" id="newUbicNombre" placeholder="Ej: Pasillo A, Estante 1">
+                                <button class="btn btn-primary" onclick="guardarUbicacion()">+</button>
+                            </div>
+                            <ul id="listaUbicaciones" class="list-group"></ul>
+                        </div>
+                    </div>
+                </div>
+
             </div>
         </section>
     </main>
@@ -113,6 +184,5 @@
     <script src="js/db.js"></script>
     <script src="js/pos.js"></script>
     <script src="js/realtime.js"></script>
-    <script src="modulos/ticket/ticket.js"></script>
 </body>
 </html>

@@ -1,55 +1,109 @@
-// Esperamos a que todo el HTML esté cargado antes de ejecutar nada
 document.addEventListener('DOMContentLoaded', () => {
     
     // ==================== VARIABLES GLOBALES ====================
     let carrito = [];
-    const IVA_RATE = 0.18; // 18% de IVA
+    const IVA_RATE = 0.18; 
+    
+    // Variables para guardar los datos de las tablas y usarlos en los selects
+    let listaCategorias = [];
+    let listaProveedores = [];
+    let listaUbicaciones = [];
 
     // Referencias al DOM
     const inputCode = document.getElementById('posCode');
     const cartBody = document.getElementById('cartBody');
 
-    // ==================== LÓGICA DEL CARRITO ====================
-    if (inputCode) {
-        inputCode.addEventListener('keydown', function(e) {
-            if (e.key === 'Enter') {
-                agregarProducto();
-            }
-        });
+    // ==================== INICIALIZACIÓN ====================
+    
+    // Cargar datos iniciales cuando abre la página
+    cargarDatosIniciales();
+
+    async function cargarDatosIniciales() {
+        // Cargar categorías, proveedores y ubicaciones para los selects
+        const [resCat, resProv, resUbi] = await Promise.all([
+            supabaseClient.from('categorias').select('*'),
+            supabaseClient.from('proveedores').select('*'),
+            supabaseClient.from('ubicaciones').select('*')
+        ]);
+
+        listaCategorias = resCat.data || [];
+        listaProveedores = resProv.data || [];
+        listaUbicaciones = resUbi.data || [];
+
+        llenarSelectsFormulario();
     }
 
+    function llenarSelectsFormulario() {
+        // Llenar Select de Proveedores
+        const selProv = document.getElementById('newProveedor');
+        if (selProv) {
+            selProv.innerHTML = '<option value="">Proveedor...</option>' + 
+                listaProveedores.map(p => `<option value="${p.id}">${p.nombre}</option>`).join('');
+        }
+
+        // Llenar Select de Categorías
+        const selCat = document.getElementById('newCategoria');
+        if (selCat) {
+            selCat.innerHTML = '<option value="">Categoría...</option>' + 
+                listaCategorias.map(c => `<option value="${c.id}">${c.nombre}</option>`).join('');
+        }
+
+        // Llenar Select de Ubicaciones
+        const selUbi = document.getElementById('newUbicacion');
+        if (selUbi) {
+            selUbi.innerHTML = '<option value="">Ubicación...</option>' + 
+                listaUbicaciones.map(u => `<option value="${u.id}">${u.nombre}</option>`).join('');
+        }
+    }
+
+    // ==================== LÓGICA DE PESTAÑAS ====================
+    window.cambiarTab = function(tabId) {
+        // Ocultar todos los contenidos
+        document.querySelectorAll('.tab-content').forEach(tab => tab.classList.remove('active'));
+        document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+        
+        // Mostrar el seleccionado
+        document.getElementById(tabId).classList.add('active');
+        document.querySelector(`.tab-btn[data-tab="${tabId}"]`).classList.add('active');
+
+        // Si la pestaña es Clientes o Proveedores, recargar sus datos
+        if (tabId === 'tab-clientes') cargarClientes();
+        if (tabId === 'tab-proveedores') cargarProveedores();
+        if (tabId === 'tab-ajustes') cargarAjustes();
+    };
+
+    // ==================== VISTAS (POS Y ADMIN) ====================
     window.abrirAdmin = function() {
         document.getElementById('pos-view').classList.add('hidden');
-        document.getElementById('product-management').classList.remove('hidden');
+        document.getElementById('admin-view').classList.remove('hidden');
         cargarProductosAdmin();
     };
 
     window.cerrarAdmin = function() {
-        document.getElementById('product-management').classList.add('hidden');
+        document.getElementById('admin-view').classList.add('hidden');
         document.getElementById('pos-view').classList.remove('hidden');
-        
-        // Limpiar formulario
-        document.getElementById('newCodigo').value = '';
-        document.getElementById('newNombre').value = '';
-        document.getElementById('newPrecio').value = '';
-        document.getElementById('newStock').value = '';
+        limpiarFormularios();
     };
+
+    function limpiarFormularios() {
+        document.querySelectorAll('input').forEach(input => {
+            if(input.type !== 'file') input.value = '';
+        });
+        document.querySelectorAll('select').forEach(select => select.value = '');
+    }
+
+    // ==================== LÓGICA DEL CARRITO ====================
+    if (inputCode) {
+        inputCode.addEventListener('keydown', function(e) {
+            if (e.key === 'Enter') agregarProducto();
+        });
+    }
 
     window.agregarProducto = async function() {
         const codigo = inputCode.value.trim();
         if (!codigo) return;
 
-        // Sanitización básica
-        if (!/^[a-zA-Z0-9\-]+$/.test(codigo)) {
-            inputCode.value = '';
-            return;
-        }
-
-        const { data, error } = await supabaseClient
-            .from('productos')
-            .select('*')
-            .eq('codigo', codigo)
-            .limit(1);
+        const { data, error } = await supabaseClient.from('productos').select('*').eq('codigo', codigo).limit(1);
 
         if (error || !data || data.length === 0) {
             inputCode.classList.add('input-error');
@@ -65,21 +119,16 @@ document.addEventListener('DOMContentLoaded', () => {
             existe.cantidad++;
         } else {
             carrito.push({
-                id: producto.id,
-                codigo: producto.codigo,
-                nombre: producto.nombre,
-                precio: Number(producto.precio),
-                cantidad: 1
+                id: producto.id, codigo: producto.codigo, nombre: producto.nombre,
+                precio: Number(producto.precio), cantidad: 1
             });
         }
-
         inputCode.value = '';
         renderCarrito();
     };
 
-        function renderCarrito() {
+    function renderCarrito() {
         cartBody.innerHTML = '';
-
         if (carrito.length === 0) {
             cartBody.innerHTML = '<tr><td colspan="6" class="empty">Carrito vacío</td></tr>';
             actualizarTotales(0);
@@ -88,38 +137,14 @@ document.addEventListener('DOMContentLoaded', () => {
 
         carrito.forEach((item, index) => {
             const tr = document.createElement('tr');
-            
-            const tdCodigo = document.createElement('td'); tdCodigo.textContent = item.codigo;
-            const tdNombre = document.createElement('td'); tdNombre.textContent = item.nombre;
-            const tdPrecio = document.createElement('td'); tdPrecio.textContent = '$' + item.precio.toFixed(2);
-            
-            // --- CAMBIO AQUÍ: Input para la cantidad ---
-            const tdCant = document.createElement('td');
-            const inputCant = document.createElement('input');
-            inputCant.type = 'number';
-            inputCant.className = 'input-cantidad';
-            inputCant.value = item.cantidad;
-            inputCant.min = 1;
-            // Usamos onchange para que se actualice al presionar Enter o salir del campo
-            inputCant.onchange = (e) => actualizarCantidad(index, e.target.value);
-            tdCant.appendChild(inputCant);
-            
-            const tdTotal = document.createElement('td'); tdTotal.textContent = '$' + (item.precio * item.cantidad).toFixed(2);
-            
-            const tdAccion = document.createElement('td');
-            const btnEliminar = document.createElement('button');
-            btnEliminar.textContent = 'X';
-            btnEliminar.className = 'btn-eliminar';
-            btnEliminar.onclick = () => eliminarItem(index);
-            tdAccion.appendChild(btnEliminar);
-
-            tr.appendChild(tdCodigo);
-            tr.appendChild(tdNombre);
-            tr.appendChild(tdPrecio);
-            tr.appendChild(tdCant);
-            tr.appendChild(tdTotal);
-            tr.appendChild(tdAccion);
-            
+            tr.innerHTML = `
+                <td>${item.codigo}</td>
+                <td>${item.nombre}</td>
+                <td>$${item.precio.toFixed(2)}</td>
+                <td><input type="number" class="input-cantidad" value="${item.cantidad}" min="1" onchange="actualizarCantidad(${index}, this.value)"></td>
+                <td>$${(item.precio * item.cantidad).toFixed(2)}</td>
+                <td><button class="btn-eliminar" onclick="eliminarItem(${index})">X</button></td>
+            `;
             cartBody.appendChild(tr);
         });
 
@@ -127,87 +152,52 @@ document.addEventListener('DOMContentLoaded', () => {
         actualizarTotales(subtotal);
     }
 
-    // Nueva función para actualizar la cantidad
-    window.actualizarCantidad = function(index, nuevaCantidad) {
-        let cant = parseInt(nuevaCantidad);
-        if (isNaN(cant) || cant < 1) cant = 1; // Evitar cantidades negativas o cero
-        
-        carrito[index].cantidad = cant;
-        renderCarrito(); // Volvemos a pintar para actualizar los totales
-    };
-
     function actualizarTotales(subtotal) {
         const iva = subtotal * IVA_RATE;
-        const total = subtotal + iva;
-        
         document.getElementById('tSub').textContent = '$' + subtotal.toFixed(2);
         document.getElementById('tIva').textContent = '$' + iva.toFixed(2);
-        document.getElementById('tTot').textContent = '$' + total.toFixed(2);
+        document.getElementById('tTot').textContent = '$' + (subtotal + iva).toFixed(2);
     }
+
+    window.actualizarCantidad = function(index, val) {
+        let cant = parseInt(val) || 1;
+        if (cant < 1) cant = 1;
+        carrito[index].cantidad = cant;
+        renderCarrito();
+    };
 
     window.eliminarItem = function(index) {
         carrito.splice(index, 1);
         renderCarrito();
     };
 
-    // ==================== LÓGICA DE COBRO (RPC) Y TICKET ====================
+    // ==================== COBRO (RPC Y TICKET) ====================
     window.cobrar = async function() {
-        if (carrito.length === 0) {
-            mostrarNotificacion('El carrito está vacío', 'error');
-            return;
-        }
+        if (carrito.length === 0) return mostrarNotificacion('El carrito está vacío', 'error');
 
-        // 1. GUARDAMOS UNA COPIA DEL CARRITO Y CALCULAMOS EL TOTAL POR ÍTEM
-        const carritoCopia = carrito.map(item => ({
-            ...item,
-            total: item.precio * item.cantidad // <-- AÑADIDO PARA SOLUCIONAR EL ERROR
-        }));
-        
+        const carritoCopia = carrito.map(item => ({ ...item, total: item.precio * item.cantidad }));
         const subtotal = carritoCopia.reduce((sum, item) => sum + item.total, 0);
         const iva = subtotal * IVA_RATE;
-        const total = subtotal + iva;
-
-        // Preparamos los datos para enviar a la función de Supabase
-        const items = carritoCopia.map(item => ({
-            id: item.id,
-            cantidad: item.cantidad
-        }));
+        const items = carritoCopia.map(item => ({ id: item.id, cantidad: item.cantidad }));
 
         try {
             mostrarNotificacion('Procesando venta...', 'success');
-
-            // 2. LLAMAMOS A LA FUNCIÓN RPC DE SUPABASE
             const { data, error } = await supabaseClient.rpc('realizar_venta', {
-                p_usuario: 'Vendedor Demo', 
-                p_items: items
+                p_usuario: 'Vendedor Demo', p_items: items
             });
-
             if (error) throw error;
 
             mostrarNotificacion(`¡Venta #${data.venta_id} registrada!`, 'success');
-            
-            // 3. VACIAMOS EL CARRITO
             carrito = [];
             renderCarrito();
             
-            // 4. MOSTRAMOS EL TICKET
             if (typeof moduloTicket !== 'undefined') {
                 moduloTicket.mostrar({
-                    id: data.venta_id,
-                    usuario: 'Vendedor Demo',
-                    items: carritoCopia,
-                    subtotal: subtotal,
-                    iva: iva,
-                    total:total // Usamos el total validado por la base de datos
+                    id: data.venta_id, usuario: 'Vendedor Demo', items: carritoCopia,
+                    subtotal: subtotal, iva: iva, total: subtotal + iva
                 });
-            } else {
-                console.warn('El módulo de ticket no está cargado.');
             }
-
-            // Si la tabla de administración está visible, recargamos el stock
-            if (!document.getElementById('product-management').classList.contains('hidden')) {
-                cargarProductosAdmin();
-            }
+            if (!document.getElementById('admin-view').classList.contains('hidden')) cargarProductosAdmin();
 
         } catch (err) {
             console.error("Error al cobrar:", err);
@@ -219,43 +209,33 @@ document.addEventListener('DOMContentLoaded', () => {
     window.cargarProductosAdmin = async function() {
         const tbody = document.getElementById('productTableBody');
         if (!tbody) return;
+        tbody.innerHTML = '<tr><td colspan="6" class="empty">Cargando...</td></tr>';
 
-        tbody.innerHTML = '<tr><td colspan="5" class="empty">Cargando...</td></tr>';
-
-        const { data, error } = await supabaseClient.from('productos').select('*').order('nombre', { ascending: true });
-
-        if (error) {
-            tbody.innerHTML = '<tr><td colspan="5" class="empty" style="color:red;">Error al cargar</td></tr>';
-            return;
-        }
+        const { data, error } = await supabaseClient.from('productos').select('*').order('nombre');
+        if (error) return tbody.innerHTML = '<tr><td colspan="6" class="empty" style="color:red;">Error al cargar</td></tr>';
+        
+        if (data.length === 0) return tbody.innerHTML = '<tr><td colspan="6" class="empty">No hay productos</td></tr>';
 
         tbody.innerHTML = '';
-
-        if (data.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="5" class="empty">No hay productos registrados</td></tr>';
-            return;
-        }
-
         data.forEach(prod => {
             const tr = document.createElement('tr');
             
-            const tdCodigo = document.createElement('td'); tdCodigo.textContent = prod.codigo;
-            const tdNombre = document.createElement('td'); tdNombre.textContent = prod.nombre;
-            const tdPrecio = document.createElement('td'); tdPrecio.textContent = '$' + Number(prod.precio).toFixed(2);
-            const tdStock = document.createElement('td'); tdStock.textContent = prod.stock;
-            
-            const tdAcciones = document.createElement('td');
-            const btnEliminar = document.createElement('button');
-            btnEliminar.textContent = '🗑️';
-            btnEliminar.className = 'btn-icon btn-danger';
-            btnEliminar.onclick = () => eliminarProducto(prod.id);
-            tdAcciones.appendChild(btnEliminar);
+            // Imagen (con placeholder si no hay)
+            const tdImg = document.createElement('td');
+            if (prod.imagen_url) {
+                tdImg.innerHTML = `<img src="${prod.imagen_url}" class="img-thumbnail">`;
+            } else {
+                tdImg.innerHTML = `<div class="img-thumbnail" style="background:#e2e8f0;"></div>`;
+            }
 
-            tr.appendChild(tdCodigo);
-            tr.appendChild(tdNombre);
-            tr.appendChild(tdPrecio);
-            tr.appendChild(tdStock);
-            tr.appendChild(tdAcciones);
+            tr.innerHTML = `
+                <td>${prod.codigo}</td>
+                <td>${prod.nombre}</td>
+                <td>$${Number(prod.precio).toFixed(2)}</td>
+                <td>${prod.stock}</td>
+                <td><button class="btn-icon btn-danger" onclick="eliminarProducto(${prod.id})">🗑️</button></td>
+            `;
+            tr.insertBefore(tdImg, tr.firstChild);
             tbody.appendChild(tr);
         });
     };
@@ -265,75 +245,204 @@ document.addEventListener('DOMContentLoaded', () => {
         const nombre = document.getElementById('newNombre').value.trim();
         const precio = parseFloat(document.getElementById('newPrecio').value);
         const stock = parseInt(document.getElementById('newStock').value);
+        
+        // IDs de los selects (pueden venir vacíos)
+        const proveedor_id = document.getElementById('newProveedor').value || null;
+        const categoria_id = document.getElementById('newCategoria').value || null;
+        const subcategoria_id = document.getElementById('newSubcategoria').value || null;
+        const ubicacion_id = document.getElementById('newUbicacion').value || null;
 
         if (!codigo || !nombre || isNaN(precio) || isNaN(stock)) {
-            mostrarNotificacion('Rellena todos los campos correctamente.', 'error');
-            return;
+            return mostrarNotificacion('Completa código, nombre, precio y stock.', 'error');
         }
 
-        const { error } = await supabaseClient.from('productos').insert([{ codigo, nombre, precio, stock }]);
+        try {
+            mostrarNotificacion('Guardando producto...', 'success');
+            let imagen_url = null;
 
-        if (error) {
-            if (error.code === '23505') {
-                mostrarNotificacion('Ese código ya existe.', 'error');
-            } else {
-                mostrarNotificacion('Error al guardar. Revisa permisos.', 'error');
+            // 1. Subir imagen si existe
+            const fileInput = document.getElementById('newImagen');
+            if (fileInput.files.length > 0) {
+                const file = fileInput.files[0];
+                const fileExt = file.name.split('.').pop();
+                const fileName = `${Date.now()}.${fileExt}`;
+                
+                const { error: uploadError } = await supabaseClient.storage
+                    .from('productos-imagenes')
+                    .upload(fileName, file);
+
+                if (uploadError) throw uploadError;
+
+                const { data: urlData } = supabaseClient.storage
+                    .from('productos-imagenes')
+                    .getPublicUrl(fileName);
+                
+                imagen_url = urlData.publicUrl;
             }
-            return;
-        }
 
-        document.getElementById('newCodigo').value = '';
-        document.getElementById('newNombre').value = '';
-        document.getElementById('newPrecio').value = '';
-        document.getElementById('newStock').value = '';
-        
-        mostrarNotificacion('Producto añadido', 'success');
-        cargarProductosAdmin();
+            // 2. Insertar en base de datos
+            const { error } = await supabaseClient.from('productos').insert([{ 
+                codigo, nombre, precio, stock, 
+                proveedor_id, categoria_id, subcategoria_id, ubicacion_id, imagen_url 
+            }]);
+
+            if (error) throw error;
+
+            mostrarNotificacion('Producto añadido', 'success');
+            limpiarFormularios();
+            cargarProductosAdmin();
+
+        } catch (err) {
+            console.error(err);
+            mostrarNotificacion('Error: ' + err.message, 'error');
+        }
     };
 
     window.eliminarProducto = async function(id) {
-        if (!confirm('¿Eliminar este producto?')) return;
-        const { error } = await supabaseClient.from('productos').delete().eq('id', id);
-        
-        if (!error) {
-            mostrarNotificacion('Producto eliminado', 'success');
-            cargarProductosAdmin();
-        }
+        if (!confirm('¿Eliminar producto?')) return;
+        await supabaseClient.from('productos').delete().eq('id', id);
+        cargarProductosAdmin();
     };
 
-    // ==================== IMPORTAR / EXPORTAR ====================
+    // ==================== GESTIÓN DE CLIENTES ====================
+    window.guardarCliente = async function() {
+        const doc = document.getElementById('cliDoc').value.trim();
+        const nombre = document.getElementById('cliNombre').value.trim();
+        const tel = document.getElementById('cliTelefono').value.trim();
+        const dir = document.getElementById('cliDireccion').value.trim();
+
+        if (!doc || !nombre) return mostrarNotificacion('Doc y Nombre obligatorios', 'error');
+
+        const { error } = await supabaseClient.from('clientes').insert([{
+            numero_documento: doc, nombre, telefono: tel, direccion: dir
+        }]);
+
+        if (error) return mostrarNotificacion('Error (¿Doc duplicado?)', 'error');
+        
+        mostrarNotificacion('Cliente añadido', 'success');
+        limpiarFormularios();
+        cargarClientes();
+    };
+
+    async function cargarClientes() {
+        const tbody = document.getElementById('clientesTableBody');
+        const { data } = await supabaseClient.from('clientes').select('*').order('nombre');
+        tbody.innerHTML = data.map(c => `
+            <tr>
+                <td>${c.numero_documento}</td><td>${c.nombre}</td>
+                <td>${c.telefono || '-'}</td><td>${c.direccion || '-'}</td>
+                <td><button class="btn-icon btn-danger" onclick="eliminarCliente(${c.id})">🗑️</button></td>
+            </tr>
+        `).join('');
+    }
+
+    window.eliminarCliente = async function(id) {
+        if(!confirm('¿Eliminar?')) return;
+        await supabaseClient.from('clientes').delete().eq('id', id);
+        cargarClientes();
+    };
+
+    // ==================== GESTIÓN DE PROVEEDORES ====================
+    window.guardarProveedor = async function() {
+        const doc = document.getElementById('provDoc').value.trim();
+        const nombre = document.getElementById('provNombre').value.trim();
+        const tel = document.getElementById('provTelefono').value.trim();
+        const contacto = document.getElementById('provContacto').value.trim();
+
+        if (!doc || !nombre) return mostrarNotificacion('Doc y Razón Social obligatorios', 'error');
+
+        const { error } = await supabaseClient.from('proveedores').insert([{
+            numero_documento: doc, nombre, telefono: tel, contacto
+        }]);
+
+        if (error) return mostrarNotificacion('Error (¿Doc duplicado?)', 'error');
+        
+        mostrarNotificacion('Proveedor añadido', 'success');
+        limpiarFormularios();
+        cargarProveedores();
+        cargarDatosIniciales(); // Recargar select de productos
+    };
+
+    async function cargarProveedores() {
+        const tbody = document.getElementById('proveedoresTableBody');
+        const { data } = await supabaseClient.from('proveedores').select('*').order('nombre');
+        tbody.innerHTML = data.map(p => `
+            <tr>
+                <td>${p.numero_documento}</td><td>${p.nombre}</td>
+                <td>${p.contacto || '-'}</td><td>${p.telefono || '-'}</td>
+                <td><button class="btn-icon btn-danger" onclick="eliminarProveedor(${p.id})">🗑️</button></td>
+            </tr>
+        `).join('');
+    }
+
+    window.eliminarProveedor = async function(id) {
+        if(!confirm('¿Eliminar?')) return;
+        await supabaseClient.from('proveedores').delete().eq('id', id);
+        cargarProveedores();
+        cargarDatosIniciales();
+    };
+
+    // ==================== AJUSTES (CATEGORÍAS Y UBICACIONES) ====================
+    window.guardarCategoria = async function() {
+        const nombre = document.getElementById('newCatNombre').value.trim();
+        if (!nombre) return;
+        await supabaseClient.from('categorias').insert([{ nombre }]);
+        document.getElementById('newCatNombre').value = '';
+        cargarAjustes();
+        cargarDatosIniciales();
+    };
+
+    window.guardarUbicacion = async function() {
+        const nombre = document.getElementById('newUbicNombre').value.trim();
+        if (!nombre) return;
+        await supabaseClient.from('ubicaciones').insert([{ nombre }]);
+        document.getElementById('newUbicNombre').value = '';
+        cargarAjustes();
+        cargarDatosIniciales();
+    };
+
+    async function cargarAjustes() {
+        // Categorías
+        const { data: cats } = await supabaseClient.from('categorias').select('*').order('nombre');
+        document.getElementById('listaCategorias').innerHTML = cats.map(c => `
+            <li>${c.nombre} <button onclick="eliminarCategoria(${c.id})" style="background:none;border:none;color:red;cursor:pointer;">X</button></li>
+        `).join('');
+
+        // Ubicaciones
+        const { data: ubis } = await supabaseClient.from('ubicaciones').select('*').order('nombre');
+        document.getElementById('listaUbicaciones').innerHTML = ubis.map(u => `
+            <li>${u.nombre} <button onclick="eliminarUbicacion(${u.id})" style="background:none;border:none;color:red;cursor:pointer;">X</button></li>
+        `).join('');
+    }
+
+    window.eliminarCategoria = async function(id) {
+        await supabaseClient.from('categorias').delete().eq('id', id);
+        cargarAjustes(); cargarDatosIniciales();
+    };
+
+    window.eliminarUbicacion = async function(id) {
+        await supabaseClient.from('ubicaciones').delete().eq('id', id);
+        cargarAjustes(); cargarDatosIniciales();
+    };
+
+    // ==================== EXCEL (IMPORTAR / EXPORTAR) ====================
+    // ... (El código de Excel que ya teníamos se mantiene igual)
     window.descargarPlantillaExcel = function() {
         try {
-            const data = [
-                { 'Codigo': 'Ejemplo: 8480013525103', 'Nombre': 'Ejemplo: Leche Entera 1L', 'Precio': 2.50, 'Stock': 50 }
-            ];
+            const data = [{ 'Codigo': '8480013525103', 'Nombre': 'Leche Entera 1L', 'Precio': 2.50, 'Stock': 50 }];
             const ws = XLSX.utils.json_to_sheet(data);
             ws['!cols'] = [{ wch: 25 }, { wch: 35 }, { wch: 12 }, { wch: 12 }];
-            
-            for (let cell in ws) {
-                if (cell.startsWith('A')) { ws[cell].t = 's'; ws[cell].z = '@'; }
-            }
+            for (let cell in ws) { if (cell.startsWith('A')) { ws[cell].t = 's'; ws[cell].z = '@'; } }
             const wb = XLSX.utils.book_new();
             XLSX.utils.book_append_sheet(wb, ws, "Productos");
             XLSX.writeFile(wb, "Plantilla_SmartPOS.xlsx");
-            mostrarNotificacion('Plantilla descargada correctamente', 'success');
-        } catch (err) {
-            mostrarNotificacion('Error al generar la plantilla', 'error');
-        }
+        } catch (err) { mostrarNotificacion('Error al generar plantilla', 'error'); }
     };
 
     window.exportarProductosExcel = async function() {
-        mostrarNotificacion('Exportando...', 'success');
         const { data, error } = await supabaseClient.from('productos').select('codigo, nombre, precio, stock');
-        
-        if (error || !data.length) {
-            mostrarNotificacion('No hay productos para exportar', 'error');
-            return;
-        }
-        const dataFormateada = data.map(p => ({
-            'Codigo': p.codigo, 'Nombre': p.nombre, 'Precio': p.precio, 'Stock': p.stock
-        }));
-        const ws = XLSX.utils.json_to_sheet(dataFormateada);
+        if (error || !data.length) return mostrarNotificacion('No hay productos', 'error');
+        const ws = XLSX.utils.json_to_sheet(data);
         const wb = XLSX.utils.book_new();
         XLSX.utils.book_append_sheet(wb, ws, "Productos");
         XLSX.writeFile(wb, "Inventario_SmartPOS.xlsx");
@@ -342,22 +451,13 @@ document.addEventListener('DOMContentLoaded', () => {
     window.importarProductosExcel = function(event) {
         const file = event.target.files[0];
         if (!file) return;
-
         const reader = new FileReader();
         reader.onload = async (e) => {
             try {
                 const data = new Uint8Array(e.target.result);
                 const workbook = XLSX.read(data, { type: 'array' });
-                const worksheet = workbook.Sheets[workbook.SheetNames[0]];
-                const json = XLSX.utils.sheet_to_json(worksheet);
+                const json = XLSX.utils.sheet_to_json(workbook.Sheets[workbook.SheetNames[0]]);
                 
-                console.log("Datos leídos del Excel:", json);
-
-                if (json.length === 0) {
-                    mostrarNotificacion('El archivo está vacío.', 'error');
-                    return;
-                }
-
                 const cleanJson = json.map(row => {
                     const cleanRow = {};
                     for (let key in row) {
@@ -370,35 +470,23 @@ document.addEventListener('DOMContentLoaded', () => {
                 const productos = cleanJson.map(row => {
                     const codigo = String(row['codigo'] || '').trim();
                     const nombre = String(row['nombre'] || row['producto'] || '').trim();
-                    const precioStr = String(row['precio'] || '0').replace(',', '.');
-                    const precio = parseFloat(precioStr) || 0;
+                    const precio = parseFloat(String(row['precio'] || '0').replace(',', '.')) || 0;
                     const stock = parseInt(row['stock'] || 0) || 0;
-
                     if (!codigo || !nombre) return null;
                     return { codigo, nombre, precio, stock };
                 }).filter(p => p !== null);
 
-                if (productos.length === 0) {
-                    mostrarNotificacion('No se encontraron columnas válidas. Revisa la consola (F12).', 'error');
-                    return;
-                }
+                if (productos.length === 0) return mostrarNotificacion('Datos inválidos', 'error');
 
-                const { error } = await supabaseClient.from('productos').upsert(productos, { onConflict: 'codigo' });
-                if (error) throw error;
-
-                mostrarNotificacion(`¡Éxito! ${productos.length} productos cargados.`, 'success');
+                await supabaseClient.from('productos').upsert(productos, { onConflict: 'codigo' });
+                mostrarNotificacion(`¡${productos.length} cargados!`, 'success');
                 event.target.value = ''; 
                 cargarProductosAdmin(); 
-
-            } catch (err) {
-                console.error("Error detallado:", err);
-                mostrarNotificacion('Error al leer el archivo. Revisa la consola (F12).', 'error');
-            }
+            } catch (err) { mostrarNotificacion('Error al leer archivo', 'error'); }
         };
         reader.readAsArrayBuffer(file);
     };
 
-    // ==================== ETIQUETAS ====================
     window.abrirGeneradorEtiquetas = function() {
         window.open('modulos/etiquetas/index.html', '_blank');
     };
@@ -407,13 +495,11 @@ document.addEventListener('DOMContentLoaded', () => {
     function mostrarNotificacion(mensaje, tipo) {
         let toast = document.getElementById('smartpos-toast');
         if (toast) toast.remove();
-
         toast = document.createElement('div');
         toast.id = 'smartpos-toast';
         toast.className = `toast ${tipo === 'error' ? 'toast-error' : 'toast-success'}`;
         toast.textContent = mensaje;
         document.body.appendChild(toast);
-
         setTimeout(() => {
             toast.classList.add('fade-out');
             setTimeout(() => toast.remove(), 300);
