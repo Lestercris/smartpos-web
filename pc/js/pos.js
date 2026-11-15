@@ -3,7 +3,7 @@ document.addEventListener('DOMContentLoaded', () => {
     
     // ==================== VARIABLES GLOBALES ====================
     let carrito = [];
-    const IVA_RATE = 0.18;
+    const IVA_RATE = 0.18; // 18% de IVA
 
     // Referencias al DOM
     const inputCode = document.getElementById('posCode');
@@ -18,7 +18,6 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // Hacemos las funciones globales para que el HTML pueda llamarlas (onclick)
     window.abrirAdmin = function() {
         document.getElementById('pos-view').classList.add('hidden');
         document.getElementById('product-management').classList.remove('hidden');
@@ -29,6 +28,7 @@ document.addEventListener('DOMContentLoaded', () => {
         document.getElementById('product-management').classList.add('hidden');
         document.getElementById('pos-view').classList.remove('hidden');
         
+        // Limpiar formulario
         document.getElementById('newCodigo').value = '';
         document.getElementById('newNombre').value = '';
         document.getElementById('newPrecio').value = '';
@@ -39,6 +39,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const codigo = inputCode.value.trim();
         if (!codigo) return;
 
+        // Sanitización básica
         if (!/^[a-zA-Z0-9\-]+$/.test(codigo)) {
             inputCode.value = '';
             return;
@@ -210,7 +211,14 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
 
-        const ws = XLSX.utils.json_to_sheet(data);
+        const dataFormateada = data.map(p => ({
+            'Codigo': p.codigo,
+            'Nombre': p.nombre,
+            'Precio': p.precio,
+            'Stock': p.stock
+        }));
+
+        const ws = XLSX.utils.json_to_sheet(dataFormateada);
         const wb = XLSX.utils.book_new();
         XLSX.utils.book_append_sheet(wb, ws, "Productos");
         XLSX.writeFile(wb, "Inventario_SmartPOS.xlsx");
@@ -228,26 +236,50 @@ document.addEventListener('DOMContentLoaded', () => {
                 const worksheet = workbook.Sheets[workbook.SheetNames[0]];
                 const json = XLSX.utils.sheet_to_json(worksheet);
                 
-                const productos = json.map(row => ({
-                    codigo: String(row['Código'] || row['codigo'] || '').trim(),
-                    nombre: String(row['Nombre'] || row['nombre'] || '').trim(),
-                    precio: parseFloat(row['Precio'] || row['precio'] || 0),
-                    stock: parseInt(row['Stock'] || row['stock'] || 0)
-                })).filter(p => p.codigo && p.nombre);
+                if (json.length === 0) {
+                    mostrarNotificacion('El archivo está vacío', 'error');
+                    return;
+                }
 
-                if (!productos.length) {
-                    mostrarNotificacion('No hay datos válidos', 'error');
+                // Limpiamos los nombres de las columnas (sin tildes, todo minúsculas)
+                const cleanJson = json.map(row => {
+                    const cleanRow = {};
+                    for (let key in row) {
+                        const cleanKey = key.trim().toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+                        cleanRow[cleanKey] = row[key];
+                    }
+                    return cleanRow;
+                });
+
+                // Mapeamos los datos buscando las columnas limpias
+                const productos = cleanJson.map(row => {
+                    const codigo = String(row['codigo'] || '').trim();
+                    const nombre = String(row['nombre'] || row['producto'] || '').trim();
+                    
+                    const precioStr = String(row['precio'] || '0').replace(',', '.');
+                    const precio = parseFloat(precioStr) || 0;
+                    
+                    const stock = parseInt(row['stock'] || 0) || 0;
+
+                    if (!codigo || !nombre) return null;
+                    return { codigo, nombre, precio, stock };
+                }).filter(p => p !== null);
+
+                if (productos.length === 0) {
+                    mostrarNotificacion('No se encontraron columnas válidas (Codigo, Nombre, Precio, Stock)', 'error');
                     return;
                 }
 
                 const { error } = await supabaseClient.from('productos').upsert(productos, { onConflict: 'codigo' });
                 if (error) throw error;
 
-                mostrarNotificacion(`¡${productos.length} productos cargados!`, 'success');
-                event.target.value = '';
-                cargarProductosAdmin();
+                mostrarNotificacion(`¡Éxito! ${productos.length} productos cargados.`, 'success');
+                event.target.value = ''; // Limpiar input
+                cargarProductosAdmin(); // Recargar tabla
+
             } catch (err) {
-                mostrarNotificacion('Error al leer el Excel', 'error');
+                console.error("Error al leer el Excel:", err);
+                mostrarNotificacion('Error al leer el archivo. Asegúrate de que sea Excel o CSV.', 'error');
             }
         };
         reader.readAsArrayBuffer(file);
@@ -258,7 +290,7 @@ document.addEventListener('DOMContentLoaded', () => {
         window.open('modulos/etiquetas/index.html', '_blank');
     };
 
-    // ==================== UTILS ====================
+    // ==================== NOTIFICACIONES ====================
     function mostrarNotificacion(mensaje, tipo) {
         let toast = document.getElementById('smartpos-toast');
         if (toast) toast.remove();
