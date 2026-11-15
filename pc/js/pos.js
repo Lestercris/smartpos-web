@@ -35,7 +35,6 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function llenarSelectsFormulario() {
-        // Formulario de Productos
         const selProv = document.getElementById('newProveedor'); 
         if (selProv) selProv.innerHTML = '<option value="">Seleccione...</option>' + listaProveedores.map(p => `<option value="${p.id}">${p.nombre}</option>`).join('');
         
@@ -48,19 +47,18 @@ document.addEventListener('DOMContentLoaded', () => {
         const selUMed = document.getElementById('newMedidaSelect'); 
         if (selUMed) selUMed.innerHTML = '<option value="">Seleccione...</option>' + listaUMedidas.map(u => `<option value="${u.id}">${u.abreviatura} (${u.nombre})</option>`).join('');
 
-        // Formularios de Clientes y Proveedores
         const optsTipoDoc = '<option value="">Tipo...</option>' + listaTiposDoc.map(t => `<option value="${t.id}">${t.abreviatura}</option>`).join('');
         const selCliTipo = document.getElementById('cliTipoDoc'); if (selCliTipo) selCliTipo.innerHTML = optsTipoDoc;
         const selProvTipo = document.getElementById('provTipoDoc'); if (selProvTipo) selProvTipo.innerHTML = optsTipoDoc;
     }
 
-    // Evento para filtrar subcategorías en el formulario de Productos
+    // Evento para subcategorías encadenadas
     const selCatProducto = document.getElementById('newCategoria');
     if (selCatProducto) {
         selCatProducto.addEventListener('change', async (e) => {
             const catId = e.target.value;
             const selSubCat = document.getElementById('newSubcategoria');
-            selSubCat.innerHTML = '<option value="">Seleccione...</option>'; // Limpiar
+            selSubCat.innerHTML = '<option value="">Seleccione...</option>';
             
             if (!catId) return;
             const { data } = await supabaseClient.from('subcategorias').select('*').eq('categoria_id', catId);
@@ -96,8 +94,10 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     function limpiarFormularios() {
-        document.querySelectorAll('input').forEach(input => { if(input.type !== 'file') input.value = ''; });
+        document.querySelectorAll('input').forEach(input => { if(input.type !== 'file' && input.type !== 'checkbox') input.value = ''; });
         document.querySelectorAll('select').forEach(select => select.value = '');
+        const chkIva = document.getElementById('newAplicaIva');
+        if(chkIva) chkIva.checked = true;
     }
 
     // ==================== LÓGICA DEL CARRITO ====================
@@ -119,8 +119,15 @@ document.addEventListener('DOMContentLoaded', () => {
         const producto = data[0];
         const existe = carrito.find(item => item.id === producto.id);
         
-        if (existe) existe.cantidad++;
-        else carrito.push({ id: producto.id, codigo: producto.codigo, nombre: producto.nombre, precio: Number(producto.precio), cantidad: 1 });
+        if (existe) {
+            existe.cantidad++;
+        } else {
+            carrito.push({ 
+                id: producto.id, codigo: producto.codigo, nombre: producto.nombre, 
+                precio: Number(producto.precio), cantidad: 1,
+                aplica_iva: producto.aplica_iva 
+            });
+        }
         
         inputCode.value = ''; 
         renderCarrito();
@@ -128,7 +135,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function renderCarrito() {
         cartBody.innerHTML = '';
-        if (carrito.length === 0) { cartBody.innerHTML = '<tr><td colspan="6" class="empty">Carrito vacío</td></tr>'; actualizarTotales(0); return; }
+        if (carrito.length === 0) { cartBody.innerHTML = '<tr><td colspan="6" class="empty">Carrito vacío</td></tr>'; actualizarTotales(); return; }
         
         carrito.forEach((item, index) => {
             const tr = document.createElement('tr');
@@ -137,16 +144,32 @@ document.addEventListener('DOMContentLoaded', () => {
                 <td><input type="number" class="input-cantidad" value="${item.cantidad}" min="1" onchange="actualizarCantidad(${index}, this.value)"></td>
                 <td>$${(item.precio * item.cantidad).toFixed(2)}</td>
                 <td><button class="btn-eliminar" onclick="eliminarItem(${index})">X</button></td>
-            `; cartBody.appendChild(tr);
+            `; 
+            cartBody.appendChild(tr);
         });
-        actualizarTotales(carrito.reduce((sum, item) => sum + (item.precio * item.cantidad), 0));
+        actualizarTotales();
     }
 
-    function actualizarTotales(subtotal) {
-        const iva = subtotal * IVA_RATE;
-        document.getElementById('tSub').textContent = '$' + subtotal.toFixed(2);
+    function actualizarTotales() {
+        let subtotalGravado = 0;
+        let subtotalExento = 0;
+
+        carrito.forEach(item => {
+            const totalLinea = item.precio * item.cantidad;
+            if (item.aplica_iva) {
+                subtotalGravado += totalLinea;
+            } else {
+                subtotalExento += totalLinea;
+            }
+        });
+
+        const subtotalGeneral = subtotalGravado + subtotalExento;
+        const iva = subtotalGravado * IVA_RATE; 
+        const total = subtotalGeneral + iva;
+        
+        document.getElementById('tSub').textContent = '$' + subtotalGeneral.toFixed(2);
         document.getElementById('tIva').textContent = '$' + iva.toFixed(2);
-        document.getElementById('tTot').textContent = '$' + (subtotal + iva).toFixed(2);
+        document.getElementById('tTot').textContent = '$' + total.toFixed(2);
     }
 
     window.actualizarCantidad = function(index, val) { let cant = parseInt(val) || 1; if (cant < 1) cant = 1; carrito[index].cantidad = cant; renderCarrito(); };
@@ -157,9 +180,15 @@ document.addEventListener('DOMContentLoaded', () => {
         if (carrito.length === 0) return mostrarNotificacion('El carrito está vacío', 'error');
         
         const carritoCopia = carrito.map(item => ({ ...item, total: item.precio * item.cantidad }));
-        const subtotal = carritoCopia.reduce((sum, item) => sum + item.total, 0);
-        const iva = subtotal * IVA_RATE;
-        
+        let subtotalGravado = 0, subtotalExento = 0;
+        carritoCopia.forEach(item => {
+            if (item.aplica_iva) subtotalGravado += item.total;
+            else subtotalExento += item.total;
+        });
+        const subtotal = subtotalGravado + subtotalExento;
+        const iva = subtotalGravado * IVA_RATE;
+        const total = subtotal + iva;
+
         try {
             mostrarNotificacion('Procesando venta...', 'success');
             const { data, error } = await supabaseClient.rpc('realizar_venta', { 
@@ -173,8 +202,18 @@ document.addEventListener('DOMContentLoaded', () => {
             carrito = []; 
             renderCarrito();
             
+            // LLAMADA AL TICKET
             if (typeof moduloTicket !== 'undefined') {
-                moduloTicket.mostrar({ id: data.venta_id, usuario: 'Vendedor Demo', items: carritoCopia, subtotal, iva, total: subtotal + iva });
+                moduloTicket.mostrar({ 
+                    id: data.venta_id, 
+                    usuario: 'Vendedor Demo', 
+                    items: carritoCopia, 
+                    subtotal: subtotal, 
+                    iva: iva, 
+                    total: total 
+                });
+            } else {
+                alert('Error: El módulo del ticket no se ha cargado. Revisa el index.html');
             }
             
             if (!document.getElementById('admin-view').classList.contains('hidden')) cargarProductosAdmin();
@@ -187,12 +226,12 @@ document.addEventListener('DOMContentLoaded', () => {
     // ==================== GESTIÓN DE PRODUCTOS ====================
     window.cargarProductosAdmin = async function() {
         const tbody = document.getElementById('productTableBody'); if (!tbody) return;
-        tbody.innerHTML = '<tr><td colspan="13" class="empty">Cargando...</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="14" class="empty">Cargando...</td></tr>';
         
         const { data, error } = await supabaseClient.from('productos').select(`*, categorias (nombre), proveedores (nombre), unidades_medida (abreviatura)`).order('nombre');
         
-        if (error) return tbody.innerHTML = '<tr><td colspan="13" class="empty" style="color:red;">Error</td></tr>';
-        if (data.length === 0) return tbody.innerHTML = '<tr><td colspan="13" class="empty">No hay productos</td></tr>';
+        if (error) return tbody.innerHTML = '<tr><td colspan="14" class="empty" style="color:red;">Error</td></tr>';
+        if (data.length === 0) return tbody.innerHTML = '<tr><td colspan="14" class="empty">No hay productos</td></tr>';
         
         tbody.innerHTML = '';
         data.forEach(prod => {
@@ -212,6 +251,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 <td>${prod.stock_minimo || 0}</td>
                 <td style="font-weight:bold; color:${prod.stock <= prod.stock_minimo ? 'red' : 'black'}">${prod.stock}</td>
                 <td>$${pCompra.toFixed(2)}</td><td>$${pVenta.toFixed(2)}</td>
+                <td style="color: ${prod.aplica_iva ? '#16a34a' : '#dc2626'}; font-weight: bold;">
+                    ${prod.aplica_iva ? 'Sí (18%)' : 'Exento'}
+                </td>
                 <td>$${margen.toFixed(2)}</td><td>${pctMargen}%</td>
                 <td>${prod.proveedores ? prod.proveedores.nombre : '-'}</td>
                 <td><button class="btn-icon btn-danger" onclick="eliminarProducto(${prod.id})">🗑️</button></td>
@@ -231,6 +273,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const subcategoria_id = document.getElementById('newSubcategoria').value || null;
         const unidad_medida_id = document.getElementById('newMedidaSelect').value || null;
         const ubicacion_id = document.getElementById('newUbicacion').value || null;
+        const aplica_iva = document.getElementById('newAplicaIva').checked;
         
         if (!codigo || !nombre || isNaN(pVenta) || isNaN(stock)) return mostrarNotificacion('Completa los campos obligatorios', 'error');
         
@@ -250,7 +293,8 @@ document.addEventListener('DOMContentLoaded', () => {
             const { error } = await supabaseClient.from('productos').insert([{ 
                 codigo, nombre, precio: pVenta, precio_compra: pCompra, 
                 stock, stock_minimo: stockMin, proveedor_id, categoria_id, 
-                subcategoria_id, unidad_medida_id, ubicacion_id, imagen_url 
+                subcategoria_id, unidad_medida_id, ubicacion_id, imagen_url,
+                aplica_iva 
             }]);
             
             if (error) throw error;
@@ -309,7 +353,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     window.eliminarProveedor = async function(id) { if(!confirm('¿Eliminar?')) return; await supabaseClient.from('proveedores').delete().eq('id', id); cargarProveedores(); cargarDatosIniciales(); };
 
-    // ==================== AJUSTES (CATEGORÍAS, SUBCATEGORÍAS, ETC.) ====================
+    // ==================== AJUSTES ====================
     window.guardarCategoria = async function() { 
         const nombre = document.getElementById('newCatNombre').value.trim(); 
         if (!nombre) return; 
@@ -319,7 +363,6 @@ document.addEventListener('DOMContentLoaded', () => {
         cargarAjustes(); 
         cargarDatosIniciales(); 
     };
-    
     window.eliminarCategoria = async function(id) { await supabaseClient.from('categorias').delete().eq('id', id); cargarAjustes(); cargarDatosIniciales(); };
 
     window.guardarSubcategoria = async function() {
@@ -332,7 +375,6 @@ document.addEventListener('DOMContentLoaded', () => {
         mostrarNotificacion('Subcategoría añadida', 'success');
         cargarAjustes();
     };
-    
     window.eliminarSubcategoria = async function(id) { await supabaseClient.from('subcategorias').delete().eq('id', id); cargarAjustes(); };
 
     window.guardarUbicacion = async function() { 
@@ -365,30 +407,21 @@ document.addEventListener('DOMContentLoaded', () => {
     window.eliminarTipoDoc = async function(id) { await supabaseClient.from('tipos_documento').delete().eq('id', id); cargarAjustes(); cargarDatosIniciales(); };
 
     async function cargarAjustes() {
-        // 1. Cargar Categorías y Llenar el Select Padre
         const { data: cats } = await supabaseClient.from('categorias').select('*').order('nombre');
         document.getElementById('listaCategorias').innerHTML = cats.map(c => `<li>${c.nombre} <button onclick="eliminarCategoria(${c.id})" class="btn-eliminar">X</button></li>`).join('');
         
         const selCatPadre = document.getElementById('newSubCatPadre');
-        if (selCatPadre) {
-            selCatPadre.innerHTML = '<option value="">Seleccione categoría...</option>' + cats.map(c => `<option value="${c.id}">${c.nombre}</option>`).join('');
-        }
+        if (selCatPadre) selCatPadre.innerHTML = '<option value="">Seleccione categoría...</option>' + cats.map(c => `<option value="${c.id}">${c.nombre}</option>`).join('');
 
-        // 2. Cargar Subcategorías
         const { data: subcats } = await supabaseClient.from('subcategorias').select('*, categorias(nombre)').order('nombre');
-        if (subcats) {
-            document.getElementById('listaSubcategorias').innerHTML = subcats.map(s => `<li><span><b>${s.categorias ? s.categorias.nombre : '-'}</b> > ${s.nombre}</span> <button onclick="eliminarSubcategoria(${s.id})" class="btn-eliminar">X</button></li>`).join('');
-        }
+        if (subcats) document.getElementById('listaSubcategorias').innerHTML = subcats.map(s => `<li><span><b>${s.categorias ? s.categorias.nombre : '-'}</b> > ${s.nombre}</span> <button onclick="eliminarSubcategoria(${s.id})" class="btn-eliminar">X</button></li>`).join('');
 
-        // 3. Cargar Ubicaciones
         const { data: ubis } = await supabaseClient.from('ubicaciones').select('*').order('nombre');
         document.getElementById('listaUbicaciones').innerHTML = ubis.map(u => `<li>${u.nombre} <button onclick="eliminarUbicacion(${u.id})" class="btn-eliminar">X</button></li>`).join('');
 
-        // 4. Cargar Unidades de Medida
         const { data: umeds } = await supabaseClient.from('unidades_medida').select('*').order('nombre');
         document.getElementById('listaUMedidas').innerHTML = umeds.map(u => `<li>${u.abreviatura} - ${u.nombre} <button onclick="eliminarUMedida(${u.id})" class="btn-eliminar">X</button></li>`).join('');
 
-        // 5. Cargar Tipos de Documento
         const { data: tipos } = await supabaseClient.from('tipos_documento').select('*').order('abreviatura');
         document.getElementById('listaTiposDoc').innerHTML = tipos.map(t => `<li>${t.abreviatura} - ${t.nombre} <button onclick="eliminarTipoDoc(${t.id})" class="btn-eliminar">X</button></li>`).join('');
     }

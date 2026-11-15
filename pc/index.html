@@ -12,6 +12,8 @@
 
     <!-- Estilos -->
     <link rel="stylesheet" href="css/styles.css">
+    <!-- Estilos del Ticket -->
+    <link rel="stylesheet" href="modulos/ticket/ticket.css">
 </head>
 <body>
     <header class="app-header">
@@ -25,7 +27,6 @@
     <main>
         <!-- ================= VISTA POS ================= -->
         <div class="pos-container" id="pos-view">
-            <!-- Panel Izquierdo: Carrito -->
             <div class="cart-panel">
                 <h2 class="panel-title">Carrito de Venta</h2>
                 <div class="input-group">
@@ -51,7 +52,6 @@
                 </div>
             </div>
 
-            <!-- Panel Derecho: Totales -->
             <div class="totals-panel">
                 <h2 class="panel-title">Resumen</h2>
                 <div class="total-row"><span>Subtotal:</span><span id="tSub">$0.00</span></div>
@@ -72,7 +72,6 @@
                     </div>
                 </div>
 
-                <!-- Pestañas de Navegación -->
                 <div class="tabs-nav">
                     <button class="tab-btn active" data-tab="tab-productos" onclick="cambiarTab('tab-productos')">Productos</button>
                     <button class="tab-btn" data-tab="tab-clientes" onclick="cambiarTab('tab-clientes')">Clientes</button>
@@ -90,7 +89,6 @@
                         <button class="btn btn-warning" onclick="abrirGeneradorEtiquetas()">🖨️ Etiquetas</button>
                     </div>
                     
-                    <!-- Formulario de Productos -->
                     <div class="form-grid-productos">
                         <div class="form-field">
                             <label>Código</label>
@@ -138,6 +136,12 @@
                             <input type="number" id="newPrecio" placeholder="0.00" step="0.01">
                         </div>
                         
+                        <!-- INTERRUPTOR DE IVA -->
+                        <div class="form-field" style="flex-direction: row; align-items: center; gap: 10px; height: 42px; background: white; padding: 0 10px; border: 1px solid #cbd5e1; border-radius: 6px;">
+                            <input type="checkbox" id="newAplicaIva" checked style="width: 18px; height: 18px; cursor: pointer;">
+                            <label for="newAplicaIva" style="margin: 0; cursor: pointer; font-size: 14px;">Cobra IVA (18%)</label>
+                        </div>
+
                         <div class="form-field">
                             <label>Imagen</label>
                             <input type="file" id="newImagen" accept="image/*" class="input-file">
@@ -160,6 +164,7 @@
                                     <th>Stock Act</th>
                                     <th>P. Compra</th>
                                     <th>P. Venta</th>
+                                    <th>IVA</th>
                                     <th>Margen</th>
                                     <th>% Margen</th>
                                     <th>Proveedor</th>
@@ -167,7 +172,7 @@
                                 </tr>
                             </thead>
                             <tbody id="productTableBody">
-                                <!-- Productos cargados por JS -->
+                                <!-- Productos -->
                             </tbody>
                         </table>
                     </div>
@@ -176,29 +181,12 @@
                 <!-- ================= PESTAÑA: CLIENTES ================= -->
                 <div id="tab-clientes" class="tab-content">
                     <div class="form-grid mb-20">
-                        <div class="form-field">
-                            <label>Tipo Doc</label>
-                            <select id="cliTipoDoc"><option value="">Tipo...</option></select>
-                        </div>
-                        <div class="form-field">
-                            <label>N Doc</label>
-                            <input type="text" id="cliDoc" placeholder="RUC / DNI">
-                        </div>
-                        <div class="form-field">
-                            <label>Nombre</label>
-                            <input type="text" id="cliNombre" placeholder="Nombre / Razón Social">
-                        </div>
-                        <div class="form-field">
-                            <label>Teléfono</label>
-                            <input type="text" id="cliTelefono" placeholder="Teléfono">
-                        </div>
-                        <div class="form-field">
-                            <label>Dirección</label>
-                            <input type="text" id="cliDireccion" placeholder="Dirección">
-                        </div>
-                        <div class="form-field btn-field">
-                            <button class="btn btn-primary" onclick="guardarCliente()">+ Añadir</button>
-                        </div>
+                        <div class="form-field"><label>Tipo Doc</label><select id="cliTipoDoc"><option value="">Tipo...</option></select></div>
+                        <div class="form-field"><label>N Doc</label><input type="text" id="cliDoc" placeholder="RUC / DNI"></div>
+                        <div class="form-field"><label>Nombre</label><input type="text" id="cliNombre" placeholder="Nombre / Razón Social"></div>
+                        <div class="form-field"><label>Teléfono</label><input type="text" id="cliTelefono" placeholder="Teléfono"></div>
+                        <div class="form-field"><label>Dirección</label><input type="text" id="cliDireccion" placeholder="Dirección"></div>
+                        <div class="form-field btn-field"><button class="btn btn-primary" onclick="guardarCliente()">+ Añadir</button></div>
                     </div>
                     <table class="data-table">
                         <thead><tr><th>Doc</th><th>Nombre</th><th>Teléfono</th><th>Dirección</th><th></th></tr></thead>
@@ -209,29 +197,12 @@
                 <!-- ================= PESTAÑA: PROVEEDORES ================= -->
                 <div id="tab-proveedores" class="tab-content">
                     <div class="form-grid mb-20">
-                        <div class="form-field">
-                            <label>Tipo Doc</label>
-                            <select id="provTipoDoc"><option value="">Tipo...</option></select>
-                        </div>
-                        <div class="form-field">
-                            <label>N Doc</label>
-                            <input type="text" id="provDoc" placeholder="RUC / DNI">
-                        </div>
-                        <div class="form-field">
-                            <label>Razón Social</label>
-                            <input type="text" id="provNombre" placeholder="Razón Social">
-                        </div>
-                        <div class="form-field">
-                            <label>Teléfono</label>
-                            <input type="text" id="provTelefono" placeholder="Teléfono">
-                        </div>
-                        <div class="form-field">
-                            <label>Contacto</label>
-                            <input type="text" id="provContacto" placeholder="Contacto">
-                        </div>
-                        <div class="form-field btn-field">
-                            <button class="btn btn-primary" onclick="guardarProveedor()">+ Añadir</button>
-                        </div>
+                        <div class="form-field"><label>Tipo Doc</label><select id="provTipoDoc"><option value="">Tipo...</option></select></div>
+                        <div class="form-field"><label>N Doc</label><input type="text" id="provDoc" placeholder="RUC / DNI"></div>
+                        <div class="form-field"><label>Razón Social</label><input type="text" id="provNombre" placeholder="Razón Social"></div>
+                        <div class="form-field"><label>Teléfono</label><input type="text" id="provTelefono" placeholder="Teléfono"></div>
+                        <div class="form-field"><label>Contacto</label><input type="text" id="provContacto" placeholder="Contacto"></div>
+                        <div class="form-field btn-field"><button class="btn btn-primary" onclick="guardarProveedor()">+ Añadir</button></div>
                     </div>
                     <table class="data-table">
                         <thead><tr><th>Doc</th><th>Nombre</th><th>Contacto</th><th>Teléfono</th><th></th></tr></thead>
@@ -242,8 +213,6 @@
                 <!-- ================= PESTAÑA: AJUSTES ================= -->
                 <div id="tab-ajustes" class="tab-content">
                     <div class="grid-ajustes">
-                        
-                        <!-- Categorías -->
                         <div class="card-inner">
                             <h3>Categorías</h3>
                             <div class="input-row mb-20">
@@ -253,14 +222,11 @@
                             <ul id="listaCategorias" class="list-group"></ul>
                         </div>
                         
-                        <!-- Subcategorías -->
                         <div class="card-inner">
                             <h3>Subcategorías</h3>
                             <div class="form-field mb-20">
                                 <label>Categoría Padre</label>
-                                <select id="newSubCatPadre">
-                                    <option value="">Seleccione categoría...</option>
-                                </select>
+                                <select id="newSubCatPadre"><option value="">Seleccione categoría...</option></select>
                             </div>
                             <div class="form-field mb-20">
                                 <label>Nombre Subcategoría</label>
@@ -272,7 +238,6 @@
                             <ul id="listaSubcategorias" class="list-group"></ul>
                         </div>
 
-                        <!-- Ubicaciones -->
                         <div class="card-inner">
                             <h3>Ubicaciones</h3>
                             <div class="input-row mb-20">
@@ -282,7 +247,6 @@
                             <ul id="listaUbicaciones" class="list-group"></ul>
                         </div>
 
-                        <!-- Unidades de Medida -->
                         <div class="card-inner">
                             <h3>Unidades de Medida</h3>
                             <div class="form-field mb-20">
@@ -296,7 +260,6 @@
                             <ul id="listaUMedidas" class="list-group"></ul>
                         </div>
 
-                        <!-- Tipos de Documento -->
                         <div class="card-inner">
                             <h3>Tipos de Documento</h3>
                             <div class="form-field mb-20">
@@ -309,10 +272,8 @@
                             </div>
                             <ul id="listaTiposDoc" class="list-group"></ul>
                         </div>
-
                     </div>
                 </div>
-
             </div>
         </section>
     </main>
@@ -321,5 +282,7 @@
     <script src="js/db.js"></script>
     <script src="js/pos.js"></script>
     <script src="js/realtime.js"></script>
+    <!-- Script del ticket -->
+    <script src="modulos/ticket/ticket.js"></script>
 </body>
 </html>

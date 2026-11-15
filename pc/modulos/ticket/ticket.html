@@ -5,7 +5,6 @@
             <button id="btnCerrarTicket" class="btn btn-danger">Cerrar</button>
         </div>
         
-        <!-- Área imprimible -->
         <div id="ticket-print-area" class="ticket-receipt">
             <div class="ticket-center">
                 <h3>SmartPOS</h3>
@@ -28,9 +27,7 @@
                         <th>Total</th>
                     </tr>
                 </thead>
-                <tbody id="tk-productos">
-                    <!-- Productos inyectados por JS -->
-                </tbody>
+                <tbody id="tk-productos"></tbody>
             </table>
             
             <hr>
@@ -42,7 +39,6 @@
             </div>
             
             <hr>
-            <!-- Código de barras del ticket -->
             <div class="ticket-barcode-container">
                 <svg id="tk-barcode"></svg>
                 <div id="tk-barcode-text" class="ticket-barcode-text"></div>
@@ -53,6 +49,7 @@
                 <p>¡Gracias por su compra!</p>
                 <p>Conserve este ticket</p>
             </div>
+        </div>
 
         <div class="ticket-actions no-print">
             <button id="btnImprimirTicket" class="btn btn-success">🖨️ Imprimir Ticket</button>
