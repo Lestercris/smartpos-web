@@ -14,6 +14,10 @@ let running = false;
 // Función para enviar el código a Supabase
 async function enviarCodigo(codigo) {
     try {
+        // Mostramos un mensaje de "Enviando..." mientras se procesa
+        resultEl.textContent = '⏳ Enviando: ' + codigo;
+        resultEl.className = ''; // Quitamos clases anteriores
+
         const { error } = await supabaseClient
             .from('escaneos')
             .insert({ codigo: codigo });
@@ -33,6 +37,11 @@ async function enviarCodigo(codigo) {
         console.error(error);
         resultEl.textContent = '❌ Error al enviar: ' + error.message;
         resultEl.className = 'error';
+        
+        // Si falla, reactivamos la cámara después de 3 segundos
+        setTimeout(() => {
+            startScanner();
+        }, 3000);
     }
 }
 
@@ -46,11 +55,23 @@ function startScanner() {
         inputStream: {
             type: 'LiveStream',
             target: container,
-            constraints: { facingMode: 'environment' }
+            constraints: { 
+                facingMode: 'environment', // Forzar cámara trasera
+                width: { ideal: 1280 },    // Resolución ideal
+                height: { ideal: 720 },
+                aspectRatio: { ideal: 1.7777777777777777 } // 16:9
+            }
         },
+        locator: {
+            patchSize: "medium", // Tamaño del área de búsqueda
+            halfSample: true     // Procesamiento más rápido
+        },
+        numOfWorkers: navigator.hardwareConcurrency || 2,
+        frequency: 10, // Intentar leer 10 veces por segundo
         decoder: {
             readers: ['ean_reader', 'ean_8_reader', 'code_128_reader', 'upc_reader']
-        }
+        },
+        locate: true
     }, function(err) {
         if (err) {
             console.error(err);
