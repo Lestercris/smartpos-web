@@ -307,3 +307,40 @@ document.addEventListener('DOMContentLoaded', () => {
         }, 3000);
     }
 });
+    // Descargar plantilla en blanco con formato .xlsx
+    window.descargarPlantillaExcel = function() {
+        try {
+            // Datos de ejemplo
+            const data = [
+                {
+                    'Codigo': 'Ejemplo: 8480013525103',
+                    'Nombre': 'Ejemplo: Leche Entera 1L',
+                    'Precio': 2.50,
+                    'Stock': 50
+                }
+            ];
+
+            // Crear la hoja de cálculo
+            const ws = XLSX.utils.json_to_sheet(data);
+            
+            // Ajustar el ancho de las columnas para que se vea bonito
+            ws['!cols'] = [
+                { wch: 25 }, // Ancho de Codigo
+                { wch: 35 }, // Ancho de Nombre
+                { wch: 12 }, // Ancho de Precio
+                { wch: 12 }  // Ancho de Stock
+            ];
+
+            // Crear el libro y añadir la hoja
+            const wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, ws, "Productos");
+
+            // Descargar el archivo
+            XLSX.writeFile(wb, "Plantilla_SmartPOS.xlsx");
+            mostrarNotificacion('Plantilla descargada correctamente', 'success');
+
+        } catch (err) {
+            console.error("Error al generar la plantilla:", err);
+            mostrarNotificacion('Error al generar la plantilla', 'error');
+        }
+    };

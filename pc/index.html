@@ -65,14 +65,21 @@
                 <div class="admin-header">
                     <h2>Gestión de Productos</h2>
                     <div class="admin-actions">
+                        <!-- Botón para descargar la plantilla Excel -->
+                        <button class="btn btn-primary" onclick="descargarPlantillaExcel()">📄 Descargar Plantilla</button>
+                        
+                        <!-- Botones de importación/exportación -->
                         <button class="btn btn-success" onclick="exportarProductosExcel()">📤 Exportar Excel</button>
                         <button class="btn btn-purple" onclick="document.getElementById('fileInput').click()">📥 Importar Excel</button>
                         <input type="file" id="fileInput" accept=".xlsx, .xls, .csv" class="hidden" onchange="importarProductosExcel(event)">
+                        
+                        <!-- Botón de etiquetas y volver -->
                         <button class="btn btn-warning" onclick="abrirGeneradorEtiquetas()">🖨️ Etiquetas</button>
                         <button class="btn btn-danger" onclick="cerrarAdmin()">Volver al POS</button>
                     </div>
                 </div>
                 
+                <!-- Formulario para añadir producto manualmente -->
                 <div class="form-grid">
                     <input type="text" id="newCodigo" placeholder="Código">
                     <input type="text" id="newNombre" placeholder="Nombre del producto">
@@ -81,6 +88,7 @@
                     <button class="btn btn-primary" onclick="guardarProducto()">+ Añadir</button>
                 </div>
 
+                <!-- Tabla de productos -->
                 <table class="data-table">
                     <thead>
                         <tr>
