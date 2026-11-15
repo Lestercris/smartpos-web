@@ -242,10 +242,11 @@
                 <!-- ================= PESTAÑA: AJUSTES ================= -->
                 <div id="tab-ajustes" class="tab-content">
                     <div class="grid-ajustes">
+                        
                         <!-- Categorías -->
                         <div class="card-inner">
                             <h3>Categorías</h3>
-                            <div class="input-group mb-20">
+                            <div class="input-row mb-20">
                                 <input type="text" id="newCatNombre" placeholder="Nueva categoría">
                                 <button class="btn btn-primary" onclick="guardarCategoria()">+</button>
                             </div>
@@ -255,12 +256,18 @@
                         <!-- Subcategorías -->
                         <div class="card-inner">
                             <h3>Subcategorías</h3>
-                            <div class="input-group mb-20" style="display: flex; gap: 5px; flex-wrap: wrap;">
-                                <select id="newSubCatPadre" style="flex: 1 1 100%; margin-bottom: 5px; padding: 10px; border: 1px solid #cbd5e1; border-radius: 6px;">
-                                    <option value="">Categoría padre...</option>
+                            <div class="form-field mb-20">
+                                <label>Categoría Padre</label>
+                                <select id="newSubCatPadre">
+                                    <option value="">Seleccione categoría...</option>
                                 </select>
-                                <input type="text" id="newSubCatNombre" placeholder="Nombre subcategoría" style="flex: 2; padding: 10px; border: 1px solid #cbd5e1; border-radius: 6px;">
-                                <button class="btn btn-primary" onclick="guardarSubcategoria()">+</button>
+                            </div>
+                            <div class="form-field mb-20">
+                                <label>Nombre Subcategoría</label>
+                                <div class="input-row">
+                                    <input type="text" id="newSubCatNombre" placeholder="Ej: Gaseosas">
+                                    <button class="btn btn-primary" onclick="guardarSubcategoria()">+</button>
+                                </div>
                             </div>
                             <ul id="listaSubcategorias" class="list-group"></ul>
                         </div>
@@ -268,7 +275,7 @@
                         <!-- Ubicaciones -->
                         <div class="card-inner">
                             <h3>Ubicaciones</h3>
-                            <div class="input-group mb-20">
+                            <div class="input-row mb-20">
                                 <input type="text" id="newUbicNombre" placeholder="Ej: Pasillo A, Estante 1">
                                 <button class="btn btn-primary" onclick="guardarUbicacion()">+</button>
                             </div>
@@ -278,10 +285,13 @@
                         <!-- Unidades de Medida -->
                         <div class="card-inner">
                             <h3>Unidades de Medida</h3>
-                            <div class="input-group mb-20" style="display: flex; gap: 5px; flex-wrap: wrap;">
-                                <input type="text" id="newUMedNombre" placeholder="Nombre (Ej: Kilogramo)" style="flex: 2; padding: 10px; border: 1px solid #cbd5e1; border-radius: 6px;">
-                                <input type="text" id="newUMedAbrev" placeholder="Abrev (Ej: KG)" style="flex: 1; padding: 10px; border: 1px solid #cbd5e1; border-radius: 6px;">
-                                <button class="btn btn-primary" onclick="guardarUMedida()">+</button>
+                            <div class="form-field mb-20">
+                                <label>Nueva Unidad</label>
+                                <div class="input-row">
+                                    <input type="text" id="newUMedNombre" placeholder="Nombre (Ej: Kilogramo)">
+                                    <input type="text" id="newUMedAbrev" placeholder="Abrev (Ej: KG)">
+                                    <button class="btn btn-primary" onclick="guardarUMedida()">+</button>
+                                </div>
                             </div>
                             <ul id="listaUMedidas" class="list-group"></ul>
                         </div>
@@ -289,13 +299,17 @@
                         <!-- Tipos de Documento -->
                         <div class="card-inner">
                             <h3>Tipos de Documento</h3>
-                            <div class="input-group mb-20" style="display: flex; gap: 5px; flex-wrap: wrap;">
-                                <input type="text" id="newTipoDocNombre" placeholder="Nombre (Ej: Pasaporte)" style="flex: 2; padding: 10px; border: 1px solid #cbd5e1; border-radius: 6px;">
-                                <input type="text" id="newTipoDocAbrev" placeholder="Abrev (Ej: PAS)" style="flex: 1; padding: 10px; border: 1px solid #cbd5e1; border-radius: 6px;">
-                                <button class="btn btn-primary" onclick="guardarTipoDoc()">+</button>
+                            <div class="form-field mb-20">
+                                <label>Nuevo Tipo</label>
+                                <div class="input-row">
+                                    <input type="text" id="newTipoDocNombre" placeholder="Nombre (Ej: Pasaporte)">
+                                    <input type="text" id="newTipoDocAbrev" placeholder="Abrev (Ej: PAS)">
+                                    <button class="btn btn-primary" onclick="guardarTipoDoc()">+</button>
+                                </div>
                             </div>
                             <ul id="listaTiposDoc" class="list-group"></ul>
                         </div>
+
                     </div>
                 </div>
 
