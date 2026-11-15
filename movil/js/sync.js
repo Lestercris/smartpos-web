@@ -8,14 +8,13 @@ function startScanner() {
             target: container,
             constraints: { 
                 facingMode: 'environment', // Cámara trasera
-                width: { ideal: 1280 },    // Resolución alta para que detecte bien
+                width: { ideal: 1280 },    
                 height: { ideal: 720 }
             }
-            // HEMOS QUITADO EL 'area' para que busque en toda la pantalla
         },
         locator: {
             patchSize: "medium",
-            halfSample: true // Procesa rápido
+            halfSample: true
         },
         numOfWorkers: navigator.hardwareConcurrency || 2,
         frequency: 10,
@@ -36,7 +35,6 @@ function startScanner() {
         startBtn.style.display = 'none';
         stopBtn.style.display = 'inline-block';
 
-        // Forzar que el video ocupe todo el contenedor visualmente
         setTimeout(() => {
             const videoElement = container.querySelector('video');
             if (videoElement) {
