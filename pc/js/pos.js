@@ -3,7 +3,7 @@ document.addEventListener('DOMContentLoaded', () => {
     
     // ==================== VARIABLES GLOBALES ====================
     let carrito = [];
-    const IVA_RATE = 0.18; // 18% de IVA
+    const IVA_RATE = 0.18; // 18% de IVA (lo haremos dinámico más adelante)
 
     // Referencias al DOM
     const inputCode = document.getElementById('posCode');
@@ -89,7 +89,7 @@ document.addEventListener('DOMContentLoaded', () => {
         carrito.forEach((item, index) => {
             const tr = document.createElement('tr');
             
-            // Usamos textContent en los td para evitar inyecciones HTML (XSS)
+            // Usamos textContent para evitar inyecciones HTML (XSS)
             const tdCodigo = document.createElement('td'); tdCodigo.textContent = item.codigo;
             const tdNombre = document.createElement('td'); tdNombre.textContent = item.nombre;
             const tdPrecio = document.createElement('td'); tdPrecio.textContent = '$' + item.precio.toFixed(2);
@@ -131,12 +131,47 @@ document.addEventListener('DOMContentLoaded', () => {
         renderCarrito();
     };
 
-    window.cobrar = function() {
+    // ==================== LÓGICA DE COBRO (RPC) ====================
+    window.cobrar = async function() {
         if (carrito.length === 0) {
             mostrarNotificacion('El carrito está vacío', 'error');
             return;
         }
-        mostrarNotificacion('¡Cobro exitoso! (Lógica pendiente)', 'success');
+
+        // Preparamos los datos para enviar (solo ID y cantidad)
+        const items = carrito.map(item => ({
+            id: item.id,
+            cantidad: item.cantidad
+        }));
+
+        try {
+            mostrarNotificacion('Procesando venta...', 'success');
+
+            // Llamamos a la función RPC de Supabase
+            const { data, error } = await supabaseClient.rpc('realizar_venta', {
+                p_usuario: 'Vendedor Demo', // Más adelante lo cambiaremos por el usuario real
+                p_items: items
+            });
+
+            if (error) throw error;
+
+            // Si todo sale bien:
+            mostrarNotificacion(`¡Venta #${data.venta_id} registrada con éxito!`, 'success');
+            
+            // Vaciamos el carrito y actualizamos la vista
+            carrito = [];
+            renderCarrito();
+            
+            // Si la tabla de productos está visible, la recargamos para ver el stock actualizado
+            if (!document.getElementById('product-management').classList.contains('hidden')) {
+                cargarProductosAdmin();
+            }
+
+        } catch (err) {
+            console.error("Error al cobrar:", err);
+            // Mostramos el mensaje de error exacto (ej: si no hay stock)
+            mostrarNotificacion('Error: ' + err.message, 'error');
+        }
     };
 
     // ==================== GESTIÓN DE PRODUCTOS ====================
@@ -226,24 +261,17 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     // ==================== IMPORTAR / EXPORTAR ====================
-    
     window.descargarPlantillaExcel = function() {
         try {
             const data = [
                 { 'Codigo': 'Ejemplo: 8480013525103', 'Nombre': 'Ejemplo: Leche Entera 1L', 'Precio': 2.50, 'Stock': 50 }
             ];
-
             const ws = XLSX.utils.json_to_sheet(data);
             ws['!cols'] = [{ wch: 25 }, { wch: 35 }, { wch: 12 }, { wch: 12 }];
-
-            // Forzar que la columna A sea texto en Excel
+            
             for (let cell in ws) {
-                if (cell.startsWith('A')) {
-                    ws[cell].t = 's';
-                    ws[cell].z = '@';
-                }
+                if (cell.startsWith('A')) { ws[cell].t = 's'; ws[cell].z = '@'; }
             }
-
             const wb = XLSX.utils.book_new();
             XLSX.utils.book_append_sheet(wb, ws, "Productos");
             XLSX.writeFile(wb, "Plantilla_SmartPOS.xlsx");
@@ -261,14 +289,9 @@ document.addEventListener('DOMContentLoaded', () => {
             mostrarNotificacion('No hay productos para exportar', 'error');
             return;
         }
-
         const dataFormateada = data.map(p => ({
-            'Codigo': p.codigo,
-            'Nombre': p.nombre,
-            'Precio': p.precio,
-            'Stock': p.stock
+            'Codigo': p.codigo, 'Nombre': p.nombre, 'Precio': p.precio, 'Stock': p.stock
         }));
-
         const ws = XLSX.utils.json_to_sheet(dataFormateada);
         const wb = XLSX.utils.book_new();
         XLSX.utils.book_append_sheet(wb, ws, "Productos");
@@ -280,16 +303,13 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!file) return;
 
         const reader = new FileReader();
-        
         reader.onload = async (e) => {
             try {
-                // 1. Leer el archivo
                 const data = new Uint8Array(e.target.result);
                 const workbook = XLSX.read(data, { type: 'array' });
                 const worksheet = workbook.Sheets[workbook.SheetNames[0]];
                 const json = XLSX.utils.sheet_to_json(worksheet);
                 
-                // Log para depurar en consola
                 console.log("Datos leídos del Excel:", json);
 
                 if (json.length === 0) {
@@ -297,33 +317,23 @@ document.addEventListener('DOMContentLoaded', () => {
                     return;
                 }
 
-                // 2. Limpiar nombres de columnas (sin tildes, minúsculas, sin BOM)
                 const cleanJson = json.map(row => {
                     const cleanRow = {};
                     for (let key in row) {
-                        const cleanKey = key.trim()
-                            .replace(/^\uFEFF/, '') 
-                            .toLowerCase()
-                            .normalize("NFD")
-                            .replace(/[\u0300-\u036f]/g, "");
-                        
+                        const cleanKey = key.trim().replace(/^\uFEFF/, '').toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, ""); 
                         cleanRow[cleanKey] = row[key];
                     }
                     return cleanRow;
                 });
 
-                // 3. Mapear los datos
                 const productos = cleanJson.map(row => {
                     const codigo = String(row['codigo'] || '').trim();
                     const nombre = String(row['nombre'] || row['producto'] || '').trim();
-                    
                     const precioStr = String(row['precio'] || '0').replace(',', '.');
                     const precio = parseFloat(precioStr) || 0;
-                    
                     const stock = parseInt(row['stock'] || 0) || 0;
 
                     if (!codigo || !nombre) return null;
-                    
                     return { codigo, nombre, precio, stock };
                 }).filter(p => p !== null);
 
@@ -332,14 +342,9 @@ document.addEventListener('DOMContentLoaded', () => {
                     return;
                 }
 
-                // 4. Guardar en Supabase
-                const { error } = await supabaseClient
-                    .from('productos')
-                    .upsert(productos, { onConflict: 'codigo' });
-
+                const { error } = await supabaseClient.from('productos').upsert(productos, { onConflict: 'codigo' });
                 if (error) throw error;
 
-                // 5. Éxito
                 mostrarNotificacion(`¡Éxito! ${productos.length} productos cargados.`, 'success');
                 event.target.value = ''; 
                 cargarProductosAdmin(); 
@@ -349,7 +354,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 mostrarNotificacion('Error al leer el archivo. Revisa la consola (F12).', 'error');
             }
         };
-        
         reader.readAsArrayBuffer(file);
     };
 
