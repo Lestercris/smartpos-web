@@ -7,29 +7,31 @@
     
     <!-- Librerías base -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="https://cdn.sheetjs.com/xlsx-0.20.0/package/dist/xlsx.full.min.js"></script>
 
     <!-- Estilos -->
     <link rel="stylesheet" href="css/styles.css">
 </head>
 <body>
-    <header>
+    <header class="app-header">
         <h1>SmartPOS</h1>
-        <div style="display: flex; gap: 15px; align-items: center;">
-            <button onclick="abrirAdmin()" style="background: #2563eb; color: white; border: none; padding: 8px 15px; border-radius: 6px; cursor: pointer;">⚙️ Productos</button>
+        <div class="header-actions">
+            <button class="btn btn-primary" onclick="abrirAdmin()">⚙️ Productos</button>
             <div id="connection-status" class="status disconnected">Desconectado</div>
         </div>
     </header>
 
     <main>
-        <div class="pos-container">
+        <!-- ================= VISTA POS ================= -->
+        <div class="pos-container" id="pos-view">
             <!-- Panel Izquierdo: Carrito -->
             <div class="cart-panel">
-                <h2>Carrito de Venta</h2>
+                <h2 class="panel-title">Carrito de Venta</h2>
                 <div class="input-group">
                     <input type="text" id="posCode" placeholder="Escanee o escriba el código..." autofocus>
-                    <button onclick="agregarProducto()">+ Agregar</button>
+                    <button class="btn btn-primary" onclick="agregarProducto()">+ Agregar</button>
                 </div>
-                <table>
+                <table class="data-table">
                     <thead>
                         <tr>
                             <th>Código</th>
@@ -48,60 +50,56 @@
 
             <!-- Panel Derecho: Totales -->
             <div class="totals-panel">
-                <h2>Resumen</h2>
+                <h2 class="panel-title">Resumen</h2>
                 <div class="total-row"><span>Subtotal:</span><span id="tSub">$0.00</span></div>
                 <div class="total-row"><span>IVA (18%):</span><span id="tIva">$0.00</span></div>
                 <div class="total-row big"><span>TOTAL:</span><span id="tTot">$0.00</span></div>
-                <button class="btn-cobrar" onclick="cobrar()">COBRAR</button>
+                <button class="btn btn-success btn-cobrar" onclick="cobrar()">COBRAR</button>
             </div>
         </div>
+
+        <!-- ================= VISTA ADMINISTRACIÓN ================= -->
+        <section id="product-management" class="admin-section hidden">
+            <div class="admin-card">
+                
+                <div class="admin-header">
+                    <h2>Gestión de Productos</h2>
+                    <div class="admin-actions">
+                        <button class="btn btn-success" onclick="exportarProductosExcel()">📤 Exportar Excel</button>
+                        <button class="btn btn-purple" onclick="document.getElementById('fileInput').click()">📥 Importar Excel</button>
+                        <input type="file" id="fileInput" accept=".xlsx, .xls, .csv" class="hidden" onchange="importarProductosExcel(event)">
+                        <button class="btn btn-warning" onclick="abrirGeneradorEtiquetas()">🖨️ Etiquetas</button>
+                        <button class="btn btn-danger" onclick="cerrarAdmin()">Volver al POS</button>
+                    </div>
+                </div>
+                
+                <div class="form-grid">
+                    <input type="text" id="newCodigo" placeholder="Código">
+                    <input type="text" id="newNombre" placeholder="Nombre del producto">
+                    <input type="number" id="newPrecio" placeholder="Precio" step="0.01">
+                    <input type="number" id="newStock" placeholder="Stock">
+                    <button class="btn btn-primary" onclick="guardarProducto()">+ Añadir</button>
+                </div>
+
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>Código</th>
+                            <th>Nombre</th>
+                            <th>Precio</th>
+                            <th>Stock</th>
+                            <th>Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody id="productTableBody">
+                        <!-- Aquí se cargarán los productos -->
+                    </tbody>
+                </table>
+            </div>
+        </section>
     </main>
 
-    <!-- Sección de Administración de Productos (Oculta por defecto) -->
-    <section id="product-management" style="display: none; padding: 20px;">
-        <div style="max-width: 1200px; margin: 0 auto; background: white; padding: 20px; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
-            
-            <!-- ENCABEZADO CON LOS BOTONES -->
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
-                <h2>Gestión de Productos</h2>
-                <div style="display: flex; gap: 10px;">
-                    
-                    <!-- ESTE ES EL BOTÓN QUE ABRE LA NUEVA PESTAÑA -->
-                    <button onclick="abrirGeneradorEtiquetas()" style="background: #f59e0b; color: white; border: none; padding: 10px 20px; border-radius: 8px; cursor: pointer;">🖨️ Generar Etiquetas</button>
-                    
-                    <!-- BOTÓN PARA VOLVER AL POS -->
-                    <button onclick="cerrarAdmin()" style="background: #dc2626; color: white; border: none; padding: 10px 20px; border-radius: 8px; cursor: pointer;">Volver al POS</button>
-                </div>
-            </div>
-            
-            <!-- Formulario para añadir producto -->
-            <div style="display: grid; grid-template-columns: 1fr 2fr 1fr 1fr auto; gap: 10px; margin-bottom: 20px; background: #f8fafc; padding: 15px; border-radius: 8px;">
-                <input type="text" id="newCodigo" placeholder="Código" style="padding: 10px; border: 1px solid #cbd5e1; border-radius: 6px;">
-                <input type="text" id="newNombre" placeholder="Nombre del producto" style="padding: 10px; border: 1px solid #cbd5e1; border-radius: 6px;">
-                <input type="number" id="newPrecio" placeholder="Precio" step="0.01" style="padding: 10px; border: 1px solid #cbd5e1; border-radius: 6px;">
-                <input type="number" id="newStock" placeholder="Stock" style="padding: 10px; border: 1px solid #cbd5e1; border-radius: 6px;">
-                <button onclick="guardarProducto()" style="background: #16a34a; color: white; border: none; padding: 10px 20px; border-radius: 6px; cursor: pointer; font-weight: bold;">+ Añadir</button>
-            </div>
-
-            <!-- Tabla de productos -->
-            <table style="width: 100%; border-collapse: collapse;">
-                <thead>
-                    <tr style="background: #f1f5f9; text-align: left;">
-                        <th style="padding: 12px;">Código</th>
-                        <th style="padding: 12px;">Nombre</th>
-                        <th style="padding: 12px;">Precio</th>
-                        <th style="padding: 12px;">Stock</th>
-                        <th style="padding: 12px;">Acciones</th>
-                    </tr>
-                </thead>
-                <tbody id="productTableBody">
-                    <!-- Aquí se cargarán los productos -->
-                </tbody>
-            </table>
-        </div>
-    </section>
-
-    <!-- Nuestros scripts -->
+    <!-- Nuestros scripts (El orden importa) -->
     <script src="js/db.js"></script>
     <script src="js/pos.js"></script>
     <script src="js/realtime.js"></script>
