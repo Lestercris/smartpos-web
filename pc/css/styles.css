@@ -272,3 +272,12 @@ main {
 .toast-success { background-color: #16a34a; }
 .toast-error { background-color: #dc2626; }
 .toast.fade-out { opacity: 0; }
+
+.input-cantidad {
+    width: 60px;
+    padding: 5px;
+    text-align: center;
+    border: 1px solid #cbd5e1;
+    border-radius: 4px;
+    font-size: 14px;
+}

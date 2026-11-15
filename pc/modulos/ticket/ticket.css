@@ -107,3 +107,20 @@
         display: none !important;
     }
 }
+.ticket-barcode-container {
+    text-align: center;
+    margin: 10px 0;
+}
+
+.ticket-barcode-container svg {
+    max-width: 100%;
+    height: 50px;
+}
+
+.ticket-barcode-text {
+    font-family: 'Courier New', Courier, monospace;
+    font-size: 14px;
+    font-weight: bold;
+    margin-top: 5px;
+    letter-spacing: 2px;
+}

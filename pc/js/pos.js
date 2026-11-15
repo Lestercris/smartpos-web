@@ -77,7 +77,7 @@ document.addEventListener('DOMContentLoaded', () => {
         renderCarrito();
     };
 
-    function renderCarrito() {
+        function renderCarrito() {
         cartBody.innerHTML = '';
 
         if (carrito.length === 0) {
@@ -92,7 +92,18 @@ document.addEventListener('DOMContentLoaded', () => {
             const tdCodigo = document.createElement('td'); tdCodigo.textContent = item.codigo;
             const tdNombre = document.createElement('td'); tdNombre.textContent = item.nombre;
             const tdPrecio = document.createElement('td'); tdPrecio.textContent = '$' + item.precio.toFixed(2);
-            const tdCant = document.createElement('td'); tdCant.textContent = item.cantidad;
+            
+            // --- CAMBIO AQUÍ: Input para la cantidad ---
+            const tdCant = document.createElement('td');
+            const inputCant = document.createElement('input');
+            inputCant.type = 'number';
+            inputCant.className = 'input-cantidad';
+            inputCant.value = item.cantidad;
+            inputCant.min = 1;
+            // Usamos onchange para que se actualice al presionar Enter o salir del campo
+            inputCant.onchange = (e) => actualizarCantidad(index, e.target.value);
+            tdCant.appendChild(inputCant);
+            
             const tdTotal = document.createElement('td'); tdTotal.textContent = '$' + (item.precio * item.cantidad).toFixed(2);
             
             const tdAccion = document.createElement('td');
@@ -115,6 +126,15 @@ document.addEventListener('DOMContentLoaded', () => {
         const subtotal = carrito.reduce((sum, item) => sum + (item.precio * item.cantidad), 0);
         actualizarTotales(subtotal);
     }
+
+    // Nueva función para actualizar la cantidad
+    window.actualizarCantidad = function(index, nuevaCantidad) {
+        let cant = parseInt(nuevaCantidad);
+        if (isNaN(cant) || cant < 1) cant = 1; // Evitar cantidades negativas o cero
+        
+        carrito[index].cantidad = cant;
+        renderCarrito(); // Volvemos a pintar para actualizar los totales
+    };
 
     function actualizarTotales(subtotal) {
         const iva = subtotal * IVA_RATE;
