@@ -49,6 +49,40 @@
             </div>
         </div>
     </main>
+    <!-- Sección de Administración de Productos (Oculta por defecto) -->
+<section id="product-management" style="display: none; padding: 20px;">
+    <div style="max-width: 1200px; margin: 0 auto; background: white; padding: 20px; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+            <h2>Gestión de Productos</h2>
+            <button onclick="cerrarAdmin()" style="background: #dc2626; color: white; border: none; padding: 10px 20px; border-radius: 8px; cursor: pointer;">Volver al POS</button>
+        </div>
+        
+        <!-- Formulario para añadir producto -->
+        <div style="display: grid; grid-template-columns: 1fr 2fr 1fr 1fr auto; gap: 10px; margin-bottom: 20px; background: #f8fafc; padding: 15px; border-radius: 8px;">
+            <input type="text" id="newCodigo" placeholder="Código" style="padding: 10px; border: 1px solid #cbd5e1; border-radius: 6px;">
+            <input type="text" id="newNombre" placeholder="Nombre del producto" style="padding: 10px; border: 1px solid #cbd5e1; border-radius: 6px;">
+            <input type="number" id="newPrecio" placeholder="Precio" step="0.01" style="padding: 10px; border: 1px solid #cbd5e1; border-radius: 6px;">
+            <input type="number" id="newStock" placeholder="Stock" style="padding: 10px; border: 1px solid #cbd5e1; border-radius: 6px;">
+            <button onclick="guardarProducto()" style="background: #16a34a; color: white; border: none; padding: 10px 20px; border-radius: 6px; cursor: pointer; font-weight: bold;">+ Añadir</button>
+        </div>
+
+        <!-- Tabla de productos -->
+        <table style="width: 100%; border-collapse: collapse;">
+            <thead>
+                <tr style="background: #f1f5f9; text-align: left;">
+                    <th style="padding: 12px;">Código</th>
+                    <th style="padding: 12px;">Nombre</th>
+                    <th style="padding: 12px;">Precio</th>
+                    <th style="padding: 12px;">Stock</th>
+                    <th style="padding: 12px;">Acciones</th>
+                </tr>
+            </thead>
+            <tbody id="productTableBody">
+                <!-- Aquí se cargarán los productos -->
+            </tbody>
+        </table>
+    </div>
+</section>
 
     <!-- Nuestros módulos -->
     <script src="js/db.js"></script>
