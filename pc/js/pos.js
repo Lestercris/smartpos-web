@@ -4,75 +4,69 @@ document.addEventListener('DOMContentLoaded', () => {
     let carrito = [];
     const IVA_RATE = 0.18; 
     
-    // Variables para guardar los datos de las tablas y usarlos en los selects
     let listaCategorias = [];
     let listaProveedores = [];
     let listaUbicaciones = [];
+    let listaUMedidas = [];
+    let listaTiposDoc = [];
 
-    // Referencias al DOM
     const inputCode = document.getElementById('posCode');
     const cartBody = document.getElementById('cartBody');
 
     // ==================== INICIALIZACIÓN ====================
-    
-    // Cargar datos iniciales cuando abre la página
     cargarDatosIniciales();
 
     async function cargarDatosIniciales() {
-        // Cargar categorías, proveedores y ubicaciones para los selects
-        const [resCat, resProv, resUbi] = await Promise.all([
-            supabaseClient.from('categorias').select('*'),
-            supabaseClient.from('proveedores').select('*'),
-            supabaseClient.from('ubicaciones').select('*')
+        const [resCat, resProv, resUbi, resUMed, resTipoDoc] = await Promise.all([
+            supabaseClient.from('categorias').select('*').order('nombre'),
+            supabaseClient.from('proveedores').select('*').order('nombre'),
+            supabaseClient.from('ubicaciones').select('*').order('nombre'),
+            supabaseClient.from('unidades_medida').select('*').order('nombre'),
+            supabaseClient.from('tipos_documento').select('*').order('abreviatura')
         ]);
 
         listaCategorias = resCat.data || [];
         listaProveedores = resProv.data || [];
         listaUbicaciones = resUbi.data || [];
+        listaUMedidas = resUMed.data || [];
+        listaTiposDoc = resTipoDoc.data || [];
 
         llenarSelectsFormulario();
     }
 
     function llenarSelectsFormulario() {
-        // Llenar Select de Proveedores
         const selProv = document.getElementById('newProveedor');
-        if (selProv) {
-            selProv.innerHTML = '<option value="">Proveedor...</option>' + 
-                listaProveedores.map(p => `<option value="${p.id}">${p.nombre}</option>`).join('');
-        }
+        if (selProv) selProv.innerHTML = '<option value="">Proveedor...</option>' + listaProveedores.map(p => `<option value="${p.id}">${p.nombre}</option>`).join('');
 
-        // Llenar Select de Categorías
         const selCat = document.getElementById('newCategoria');
-        if (selCat) {
-            selCat.innerHTML = '<option value="">Categoría...</option>' + 
-                listaCategorias.map(c => `<option value="${c.id}">${c.nombre}</option>`).join('');
-        }
+        if (selCat) selCat.innerHTML = '<option value="">Categoría...</option>' + listaCategorias.map(c => `<option value="${c.id}">${c.nombre}</option>`).join('');
 
-        // Llenar Select de Ubicaciones
         const selUbi = document.getElementById('newUbicacion');
-        if (selUbi) {
-            selUbi.innerHTML = '<option value="">Ubicación...</option>' + 
-                listaUbicaciones.map(u => `<option value="${u.id}">${u.nombre}</option>`).join('');
-        }
+        if (selUbi) selUbi.innerHTML = '<option value="">Ubicación...</option>' + listaUbicaciones.map(u => `<option value="${u.id}">${u.nombre}</option>`).join('');
+
+        const selUMed = document.getElementById('newMedidaSelect');
+        if (selUMed) selUMed.innerHTML = '<option value="">U. Medida...</option>' + listaUMedidas.map(u => `<option value="${u.id}">${u.abreviatura} (${u.nombre})</option>`).join('');
+
+        const optsTipoDoc = '<option value="">Tipo...</option>' + listaTiposDoc.map(t => `<option value="${t.id}">${t.abreviatura}</option>`).join('');
+        const selCliTipo = document.getElementById('cliTipoDoc');
+        if (selCliTipo) selCliTipo.innerHTML = optsTipoDoc;
+        const selProvTipo = document.getElementById('provTipoDoc');
+        if (selProvTipo) selProvTipo.innerHTML = optsTipoDoc;
     }
 
     // ==================== LÓGICA DE PESTAÑAS ====================
     window.cambiarTab = function(tabId) {
-        // Ocultar todos los contenidos
         document.querySelectorAll('.tab-content').forEach(tab => tab.classList.remove('active'));
         document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
-        
-        // Mostrar el seleccionado
         document.getElementById(tabId).classList.add('active');
         document.querySelector(`.tab-btn[data-tab="${tabId}"]`).classList.add('active');
 
-        // Si la pestaña es Clientes o Proveedores, recargar sus datos
         if (tabId === 'tab-clientes') cargarClientes();
         if (tabId === 'tab-proveedores') cargarProveedores();
         if (tabId === 'tab-ajustes') cargarAjustes();
     };
 
-    // ==================== VISTAS (POS Y ADMIN) ====================
+    // ==================== VISTAS ====================
     window.abrirAdmin = function() {
         document.getElementById('pos-view').classList.add('hidden');
         document.getElementById('admin-view').classList.remove('hidden');
@@ -209,30 +203,45 @@ document.addEventListener('DOMContentLoaded', () => {
     window.cargarProductosAdmin = async function() {
         const tbody = document.getElementById('productTableBody');
         if (!tbody) return;
-        tbody.innerHTML = '<tr><td colspan="6" class="empty">Cargando...</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="13" class="empty">Cargando...</td></tr>';
 
-        const { data, error } = await supabaseClient.from('productos').select('*').order('nombre');
-        if (error) return tbody.innerHTML = '<tr><td colspan="6" class="empty" style="color:red;">Error al cargar</td></tr>';
-        
-        if (data.length === 0) return tbody.innerHTML = '<tr><td colspan="6" class="empty">No hay productos</td></tr>';
+        const { data, error } = await supabaseClient
+            .from('productos')
+            .select(`*, categorias (nombre), proveedores (nombre), unidades_medida (abreviatura)`)
+            .order('nombre');
+            
+        if (error) return tbody.innerHTML = '<tr><td colspan="13" class="empty" style="color:red;">Error al cargar</td></tr>';
+        if (data.length === 0) return tbody.innerHTML = '<tr><td colspan="13" class="empty">No hay productos</td></tr>';
 
         tbody.innerHTML = '';
         data.forEach(prod => {
+            const pCompra = Number(prod.precio_compra) || 0;
+            const pVenta = Number(prod.precio) || 0;
+            const margen = pVenta - pCompra;
+            const pctMargen = pCompra > 0 ? ((margen / pCompra) * 100).toFixed(2) : '0.00';
+            
+            const catNombre = prod.categorias ? prod.categorias.nombre : '-';
+            const provNombre = prod.proveedores ? prod.proveedores.nombre : '-';
+            const medidaAbrev = prod.unidades_medida ? prod.unidades_medida.abreviatura : '-';
+            
             const tr = document.createElement('tr');
             
-            // Imagen (con placeholder si no hay)
             const tdImg = document.createElement('td');
-            if (prod.imagen_url) {
-                tdImg.innerHTML = `<img src="${prod.imagen_url}" class="img-thumbnail">`;
-            } else {
-                tdImg.innerHTML = `<div class="img-thumbnail" style="background:#e2e8f0;"></div>`;
-            }
+            if (prod.imagen_url) tdImg.innerHTML = `<img src="${prod.imagen_url}" class="img-thumbnail">`;
+            else tdImg.innerHTML = `<div class="img-thumbnail" style="background:#e2e8f0;"></div>`;
 
             tr.innerHTML = `
                 <td>${prod.codigo}</td>
                 <td>${prod.nombre}</td>
-                <td>$${Number(prod.precio).toFixed(2)}</td>
-                <td>${prod.stock}</td>
+                <td>${catNombre}</td>
+                <td>${medidaAbrev}</td>
+                <td>${prod.stock_minimo || 0}</td>
+                <td style="font-weight:bold; color:${prod.stock <= prod.stock_minimo ? 'red' : 'black'}">${prod.stock}</td>
+                <td>$${pCompra.toFixed(2)}</td>
+                <td>$${pVenta.toFixed(2)}</td>
+                <td>$${margen.toFixed(2)}</td>
+                <td>${pctMargen}%</td>
+                <td>${provNombre}</td>
                 <td><button class="btn-icon btn-danger" onclick="eliminarProducto(${prod.id})">🗑️</button></td>
             `;
             tr.insertBefore(tdImg, tr.firstChild);
@@ -243,24 +252,24 @@ document.addEventListener('DOMContentLoaded', () => {
     window.guardarProducto = async function() {
         const codigo = document.getElementById('newCodigo').value.trim();
         const nombre = document.getElementById('newNombre').value.trim();
-        const precio = parseFloat(document.getElementById('newPrecio').value);
+        const pVenta = parseFloat(document.getElementById('newPrecio').value);
+        const pCompra = parseFloat(document.getElementById('newPrecioCompra').value) || 0;
         const stock = parseInt(document.getElementById('newStock').value);
+        const stockMin = parseInt(document.getElementById('newStockMin').value) || 0;
         
-        // IDs de los selects (pueden venir vacíos)
         const proveedor_id = document.getElementById('newProveedor').value || null;
         const categoria_id = document.getElementById('newCategoria').value || null;
-        const subcategoria_id = document.getElementById('newSubcategoria').value || null;
+        const unidad_medida_id = document.getElementById('newMedidaSelect').value || null;
         const ubicacion_id = document.getElementById('newUbicacion').value || null;
 
-        if (!codigo || !nombre || isNaN(precio) || isNaN(stock)) {
-            return mostrarNotificacion('Completa código, nombre, precio y stock.', 'error');
+        if (!codigo || !nombre || isNaN(pVenta) || isNaN(stock)) {
+            return mostrarNotificacion('Completa código, nombre, precio venta y stock.', 'error');
         }
 
         try {
             mostrarNotificacion('Guardando producto...', 'success');
             let imagen_url = null;
 
-            // 1. Subir imagen si existe
             const fileInput = document.getElementById('newImagen');
             if (fileInput.files.length > 0) {
                 const file = fileInput.files[0];
@@ -270,22 +279,19 @@ document.addEventListener('DOMContentLoaded', () => {
                 const { error: uploadError } = await supabaseClient.storage
                     .from('productos-imagenes')
                     .upload(fileName, file);
-
                 if (uploadError) throw uploadError;
 
                 const { data: urlData } = supabaseClient.storage
                     .from('productos-imagenes')
                     .getPublicUrl(fileName);
-                
                 imagen_url = urlData.publicUrl;
             }
 
-            // 2. Insertar en base de datos
             const { error } = await supabaseClient.from('productos').insert([{ 
-                codigo, nombre, precio, stock, 
-                proveedor_id, categoria_id, subcategoria_id, ubicacion_id, imagen_url 
+                codigo, nombre, precio: pVenta, precio_compra: pCompra,
+                stock, stock_minimo: stockMin,
+                proveedor_id, categoria_id, unidad_medida_id, ubicacion_id, imagen_url 
             }]);
-
             if (error) throw error;
 
             mostrarNotificacion('Producto añadido', 'success');
@@ -306,6 +312,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // ==================== GESTIÓN DE CLIENTES ====================
     window.guardarCliente = async function() {
+        const tipo_documento_id = document.getElementById('cliTipoDoc').value || null;
         const doc = document.getElementById('cliDoc').value.trim();
         const nombre = document.getElementById('cliNombre').value.trim();
         const tel = document.getElementById('cliTelefono').value.trim();
@@ -314,7 +321,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!doc || !nombre) return mostrarNotificacion('Doc y Nombre obligatorios', 'error');
 
         const { error } = await supabaseClient.from('clientes').insert([{
-            numero_documento: doc, nombre, telefono: tel, direccion: dir
+            tipo_documento_id, numero_documento: doc, nombre, telefono: tel, direccion: dir
         }]);
 
         if (error) return mostrarNotificacion('Error (¿Doc duplicado?)', 'error');
@@ -326,10 +333,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
     async function cargarClientes() {
         const tbody = document.getElementById('clientesTableBody');
-        const { data } = await supabaseClient.from('clientes').select('*').order('nombre');
+        const { data } = await supabaseClient.from('clientes').select('*, tipos_documento(abreviatura)').order('nombre');
         tbody.innerHTML = data.map(c => `
             <tr>
-                <td>${c.numero_documento}</td><td>${c.nombre}</td>
+                <td>${c.tipos_documento ? c.tipos_documento.abreviatura : '-'} ${c.numero_documento}</td>
+                <td>${c.nombre}</td>
                 <td>${c.telefono || '-'}</td><td>${c.direccion || '-'}</td>
                 <td><button class="btn-icon btn-danger" onclick="eliminarCliente(${c.id})">🗑️</button></td>
             </tr>
@@ -344,6 +352,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // ==================== GESTIÓN DE PROVEEDORES ====================
     window.guardarProveedor = async function() {
+        const tipo_documento_id = document.getElementById('provTipoDoc').value || null;
         const doc = document.getElementById('provDoc').value.trim();
         const nombre = document.getElementById('provNombre').value.trim();
         const tel = document.getElementById('provTelefono').value.trim();
@@ -352,7 +361,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!doc || !nombre) return mostrarNotificacion('Doc y Razón Social obligatorios', 'error');
 
         const { error } = await supabaseClient.from('proveedores').insert([{
-            numero_documento: doc, nombre, telefono: tel, contacto
+            tipo_documento_id, numero_documento: doc, nombre, telefono: tel, contacto
         }]);
 
         if (error) return mostrarNotificacion('Error (¿Doc duplicado?)', 'error');
@@ -360,15 +369,16 @@ document.addEventListener('DOMContentLoaded', () => {
         mostrarNotificacion('Proveedor añadido', 'success');
         limpiarFormularios();
         cargarProveedores();
-        cargarDatosIniciales(); // Recargar select de productos
+        cargarDatosIniciales();
     };
 
     async function cargarProveedores() {
         const tbody = document.getElementById('proveedoresTableBody');
-        const { data } = await supabaseClient.from('proveedores').select('*').order('nombre');
+        const { data } = await supabaseClient.from('proveedores').select('*, tipos_documento(abreviatura)').order('nombre');
         tbody.innerHTML = data.map(p => `
             <tr>
-                <td>${p.numero_documento}</td><td>${p.nombre}</td>
+                <td>${p.tipos_documento ? p.tipos_documento.abreviatura : '-'} ${p.numero_documento}</td>
+                <td>${p.nombre}</td>
                 <td>${p.contacto || '-'}</td><td>${p.telefono || '-'}</td>
                 <td><button class="btn-icon btn-danger" onclick="eliminarProveedor(${p.id})">🗑️</button></td>
             </tr>
@@ -382,14 +392,13 @@ document.addEventListener('DOMContentLoaded', () => {
         cargarDatosIniciales();
     };
 
-    // ==================== AJUSTES (CATEGORÍAS Y UBICACIONES) ====================
+    // ==================== AJUSTES (CATEGORÍAS, UBICACIONES, MEDIDAS, TIPOS DOC) ====================
     window.guardarCategoria = async function() {
         const nombre = document.getElementById('newCatNombre').value.trim();
         if (!nombre) return;
         await supabaseClient.from('categorias').insert([{ nombre }]);
         document.getElementById('newCatNombre').value = '';
-        cargarAjustes();
-        cargarDatosIniciales();
+        cargarAjustes(); cargarDatosIniciales();
     };
 
     window.guardarUbicacion = async function() {
@@ -397,21 +406,56 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!nombre) return;
         await supabaseClient.from('ubicaciones').insert([{ nombre }]);
         document.getElementById('newUbicNombre').value = '';
-        cargarAjustes();
-        cargarDatosIniciales();
+        cargarAjustes(); cargarDatosIniciales();
+    };
+
+    window.guardarUMedida = async function() {
+        const nombre = document.getElementById('newUMedNombre').value.trim();
+        const abrev = document.getElementById('newUMedAbrev').value.trim().toUpperCase();
+        if (!nombre || !abrev) return mostrarNotificacion('Nombre y abreviatura obligatorios', 'error');
+        
+        const { error } = await supabaseClient.from('unidades_medida').insert([{ nombre, abreviatura: abrev }]);
+        if (error) return mostrarNotificacion('Error (¿Ya existe?)', 'error');
+        
+        document.getElementById('newUMedNombre').value = '';
+        document.getElementById('newUMedAbrev').value = '';
+        mostrarNotificacion('Unidad añadida', 'success');
+        cargarAjustes(); cargarDatosIniciales();
+    };
+
+    window.guardarTipoDoc = async function() {
+        const nombre = document.getElementById('newTipoDocNombre').value.trim();
+        const abrev = document.getElementById('newTipoDocAbrev').value.trim().toUpperCase();
+        if (!nombre || !abrev) return mostrarNotificacion('Nombre y abreviatura obligatorios', 'error');
+        
+        const { error } = await supabaseClient.from('tipos_documento').insert([{ nombre, abreviatura: abrev }]);
+        if (error) return mostrarNotificacion('Error (¿Ya existe?)', 'error');
+        
+        document.getElementById('newTipoDocNombre').value = '';
+        document.getElementById('newTipoDocAbrev').value = '';
+        mostrarNotificacion('Tipo de documento añadido', 'success');
+        cargarAjustes(); cargarDatosIniciales();
     };
 
     async function cargarAjustes() {
-        // Categorías
         const { data: cats } = await supabaseClient.from('categorias').select('*').order('nombre');
         document.getElementById('listaCategorias').innerHTML = cats.map(c => `
             <li>${c.nombre} <button onclick="eliminarCategoria(${c.id})" style="background:none;border:none;color:red;cursor:pointer;">X</button></li>
         `).join('');
 
-        // Ubicaciones
         const { data: ubis } = await supabaseClient.from('ubicaciones').select('*').order('nombre');
         document.getElementById('listaUbicaciones').innerHTML = ubis.map(u => `
             <li>${u.nombre} <button onclick="eliminarUbicacion(${u.id})" style="background:none;border:none;color:red;cursor:pointer;">X</button></li>
+        `).join('');
+
+        const { data: umeds } = await supabaseClient.from('unidades_medida').select('*').order('nombre');
+        document.getElementById('listaUMedidas').innerHTML = umeds.map(u => `
+            <li>${u.abreviatura} - ${u.nombre} <button onclick="eliminarUMedida(${u.id})" style="background:none;border:none;color:red;cursor:pointer;">X</button></li>
+        `).join('');
+
+        const { data: tipos } = await supabaseClient.from('tipos_documento').select('*').order('abreviatura');
+        document.getElementById('listaTiposDoc').innerHTML = tipos.map(t => `
+            <li>${t.abreviatura} - ${t.nombre} <button onclick="eliminarTipoDoc(${t.id})" style="background:none;border:none;color:red;cursor:pointer;">X</button></li>
         `).join('');
     }
 
@@ -419,14 +463,20 @@ document.addEventListener('DOMContentLoaded', () => {
         await supabaseClient.from('categorias').delete().eq('id', id);
         cargarAjustes(); cargarDatosIniciales();
     };
-
     window.eliminarUbicacion = async function(id) {
         await supabaseClient.from('ubicaciones').delete().eq('id', id);
         cargarAjustes(); cargarDatosIniciales();
     };
+    window.eliminarUMedida = async function(id) {
+        await supabaseClient.from('unidades_medida').delete().eq('id', id);
+        cargarAjustes(); cargarDatosIniciales();
+    };
+    window.eliminarTipoDoc = async function(id) {
+        await supabaseClient.from('tipos_documento').delete().eq('id', id);
+        cargarAjustes(); cargarDatosIniciales();
+    };
 
     // ==================== EXCEL (IMPORTAR / EXPORTAR) ====================
-    // ... (El código de Excel que ya teníamos se mantiene igual)
     window.descargarPlantillaExcel = function() {
         try {
             const data = [{ 'Codigo': '8480013525103', 'Nombre': 'Leche Entera 1L', 'Precio': 2.50, 'Stock': 50 }];
