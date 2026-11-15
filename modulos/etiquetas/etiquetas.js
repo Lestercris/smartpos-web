@@ -3,32 +3,60 @@ const moduloEtiquetas = {
     init: function() {
         // Cargar el HTML del módulo en el contenedor principal
         const contenedor = document.getElementById('contenedor-modulos');
-        if (!contenedor) return;
+        if (!contenedor) {
+            console.error('No se encontró el contenedor de módulos');
+            return;
+        }
 
         fetch('modulos/etiquetas/etiquetas.html')
-            .then(res => res.text())
+            .then(res => {
+                if (!res.ok) throw new Error('Error al cargar el HTML del módulo');
+                return res.text();
+            })
             .then(html => {
                 contenedor.innerHTML = html;
                 this.bindEvents();
+            })
+            .catch(err => {
+                console.error('Error cargando el módulo:', err);
+                contenedor.innerHTML = '<p style="color:red; text-align:center;">Error al cargar el módulo de etiquetas.</p>';
             });
     },
     
     bindEvents: function() {
-        document.getElementById('btnCerrarEtiquetas').addEventListener('click', () => {
-            document.getElementById('modulo-etiquetas').style.display = 'none';
-            document.querySelector('.pos-container').style.display = 'grid';
-        });
+        // Verificamos que los botones existan antes de asignar eventos
+        const btnCerrar = document.getElementById('btnCerrarEtiquetas');
+        const btnImprimir = document.getElementById('btnImprimirEtiquetas');
 
-        document.getElementById('btnImprimirEtiquetas').addEventListener('click', () => {
-            window.print();
-        });
+        if (btnCerrar) {
+            btnCerrar.addEventListener('click', () => {
+                document.getElementById('modulo-etiquetas').style.display = 'none';
+                document.querySelector('.pos-container').style.display = 'grid';
+            });
+        }
+
+        if (btnImprimir) {
+            btnImprimir.addEventListener('click', () => {
+                window.print();
+            });
+        }
     },
 
     abrir: async function() {
+        // Ocultamos el POS y mostramos el módulo
         document.querySelector('.pos-container').style.display = 'none';
-        document.getElementById('modulo-etiquetas').style.display = 'block';
+        
+        // Nos aseguramos de que el módulo se haya cargado antes de mostrarlo
+        const modulo = document.getElementById('modulo-etiquetas');
+        if (!modulo) {
+            alert('El módulo no se ha cargado correctamente. Recarga la página.');
+            return;
+        }
+        modulo.style.display = 'block';
         
         const container = document.getElementById('etiquetas-container');
+        if (!container) return;
+
         container.innerHTML = '<p style="text-align:center; width:100%;">Cargando productos...</p>';
 
         const { data, error } = await supabaseClient.from('productos').select('*').order('nombre');
