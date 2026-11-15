@@ -1,12 +1,12 @@
-<div id="modulo-etiquetas">
-    <div class="etiquetas-header no-print">
+<div id="modulo-etiquetas" style="display: none; padding: 20px; background: white; min-height: 100vh;">
+    <div class="etiquetas-header no-print" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; border-bottom: 1px solid #e2e8f0; padding-bottom: 10px;">
         <h2>🖨️ Generador de Etiquetas</h2>
         <div>
-            <button id="btnImprimirEtiquetas" class="btn-accion btn-primary">Imprimir</button>
-            <button id="btnCerrarEtiquetas" class="btn-accion btn-danger">Volver</button>
+            <button id="btnImprimirEtiquetas" class="btn-accion" style="background: #2563eb; color: white; border: none; padding: 10px 20px; border-radius: 6px; cursor: pointer; margin-right: 10px;">Imprimir</button>
+            <button id="btnCerrarEtiquetas" class="btn-accion" style="background: #dc2626; color: white; border: none; padding: 10px 20px; border-radius: 6px; cursor: pointer;">Volver</button>
         </div>
     </div>
-    <div id="etiquetas-container" class="etiquetas-grid">
-        <!-- Las etiquetas se generan aquí -->
-    </div>
+    
+    <!-- Contenedor para las etiquetas -->
+    <div id="etiquetas-container" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 20px;"></div>
 </div>
