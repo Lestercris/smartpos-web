@@ -1,50 +1,41 @@
+const startBtn = document.getElementById('startBtn');
+const stopBtn = document.getElementById('stopBtn');
+const container = document.getElementById('scanner-container');
+let running = false;
+
+// Función simple para iniciar
 function startScanner() {
     if (running) return;
-    resultEl.classList.remove('show');
-
+    startBtn.textContent = 'Encendiendo...';
+    
     Quagga.init({
         inputStream: {
             type: 'LiveStream',
             target: container,
-            constraints: { 
-                facingMode: 'environment', // Cámara trasera
-                width: { ideal: 1280 },    
-                height: { ideal: 720 }
-            }
+            constraints: { facingMode: 'environment' }
         },
-        locator: {
-            patchSize: "medium",
-            halfSample: true
-        },
-        numOfWorkers: navigator.hardwareConcurrency || 2,
-        frequency: 10,
         decoder: {
-            readers: ['ean_reader', 'ean_8_reader', 'code_128_reader', 'upc_reader']
-        },
-        locate: true
+            readers: ['ean_reader']
+        }
     }, function(err) {
         if (err) {
-            console.error(err);
-            resultEl.textContent = 'Error de cámara: ' + err.message;
-            resultEl.className = 'show error';
+            alert("Error: " + err.message);
+            startBtn.textContent = '▶ Iniciar Escáner';
             return;
         }
-        
         Quagga.start();
         running = true;
         startBtn.style.display = 'none';
         stopBtn.style.display = 'inline-block';
-
-        setTimeout(() => {
-            const videoElement = container.querySelector('video');
-            if (videoElement) {
-                videoElement.style.position = 'absolute';
-                videoElement.style.top = '0';
-                videoElement.style.left = '0';
-                videoElement.style.width = '100%';
-                videoElement.style.height = '100%';
-                videoElement.style.objectFit = 'cover';
-            }
-        }, 100);
     });
+}
+
+// Función simple para detener
+function stopScanner() {
+    if (!running) return;
+    Quagga.stop();
+    running = false;
+    startBtn.style.display = 'inline-block';
+    stopBtn.style.display = 'none';
+    container.innerHTML = '<div class="scan-frame"><div class="corner-bottom"></div><div class="scan-line"></div></div><div id="result"></div>';
 }
