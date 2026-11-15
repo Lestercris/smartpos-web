@@ -89,14 +89,27 @@ document.addEventListener('DOMContentLoaded', () => {
         carrito.forEach((item, index) => {
             const tr = document.createElement('tr');
             
-            tr.innerHTML = `
-                <td>${item.codigo}</td>
-                <td>${item.nombre}</td>
-                <td>$${item.precio.toFixed(2)}</td>
-                <td>${item.cantidad}</td>
-                <td>$${(item.precio * item.cantidad).toFixed(2)}</td>
-                <td><button class="btn-eliminar" onclick="eliminarItem(${index})">X</button></td>
-            `;
+            // Usamos textContent en los td para evitar inyecciones HTML (XSS)
+            const tdCodigo = document.createElement('td'); tdCodigo.textContent = item.codigo;
+            const tdNombre = document.createElement('td'); tdNombre.textContent = item.nombre;
+            const tdPrecio = document.createElement('td'); tdPrecio.textContent = '$' + item.precio.toFixed(2);
+            const tdCant = document.createElement('td'); tdCant.textContent = item.cantidad;
+            const tdTotal = document.createElement('td'); tdTotal.textContent = '$' + (item.precio * item.cantidad).toFixed(2);
+            
+            const tdAccion = document.createElement('td');
+            const btnEliminar = document.createElement('button');
+            btnEliminar.textContent = 'X';
+            btnEliminar.className = 'btn-eliminar';
+            btnEliminar.onclick = () => eliminarItem(index);
+            tdAccion.appendChild(btnEliminar);
+
+            tr.appendChild(tdCodigo);
+            tr.appendChild(tdNombre);
+            tr.appendChild(tdPrecio);
+            tr.appendChild(tdCant);
+            tr.appendChild(tdTotal);
+            tr.appendChild(tdAccion);
+            
             cartBody.appendChild(tr);
         });
 
@@ -149,13 +162,24 @@ document.addEventListener('DOMContentLoaded', () => {
 
         data.forEach(prod => {
             const tr = document.createElement('tr');
-            tr.innerHTML = `
-                <td>${prod.codigo}</td>
-                <td>${prod.nombre}</td>
-                <td>$${Number(prod.precio).toFixed(2)}</td>
-                <td>${prod.stock}</td>
-                <td><button class="btn-icon btn-danger" onclick="eliminarProducto(${prod.id})">🗑️</button></td>
-            `;
+            
+            const tdCodigo = document.createElement('td'); tdCodigo.textContent = prod.codigo;
+            const tdNombre = document.createElement('td'); tdNombre.textContent = prod.nombre;
+            const tdPrecio = document.createElement('td'); tdPrecio.textContent = '$' + Number(prod.precio).toFixed(2);
+            const tdStock = document.createElement('td'); tdStock.textContent = prod.stock;
+            
+            const tdAcciones = document.createElement('td');
+            const btnEliminar = document.createElement('button');
+            btnEliminar.textContent = '🗑️';
+            btnEliminar.className = 'btn-icon btn-danger';
+            btnEliminar.onclick = () => eliminarProducto(prod.id);
+            tdAcciones.appendChild(btnEliminar);
+
+            tr.appendChild(tdCodigo);
+            tr.appendChild(tdNombre);
+            tr.appendChild(tdPrecio);
+            tr.appendChild(tdStock);
+            tr.appendChild(tdAcciones);
             tbody.appendChild(tr);
         });
     };
@@ -202,12 +226,39 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     // ==================== IMPORTAR / EXPORTAR ====================
+    
+    window.descargarPlantillaExcel = function() {
+        try {
+            const data = [
+                { 'Codigo': 'Ejemplo: 8480013525103', 'Nombre': 'Ejemplo: Leche Entera 1L', 'Precio': 2.50, 'Stock': 50 }
+            ];
+
+            const ws = XLSX.utils.json_to_sheet(data);
+            ws['!cols'] = [{ wch: 25 }, { wch: 35 }, { wch: 12 }, { wch: 12 }];
+
+            // Forzar que la columna A sea texto en Excel
+            for (let cell in ws) {
+                if (cell.startsWith('A')) {
+                    ws[cell].t = 's';
+                    ws[cell].z = '@';
+                }
+            }
+
+            const wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, ws, "Productos");
+            XLSX.writeFile(wb, "Plantilla_SmartPOS.xlsx");
+            mostrarNotificacion('Plantilla descargada correctamente', 'success');
+        } catch (err) {
+            mostrarNotificacion('Error al generar la plantilla', 'error');
+        }
+    };
+
     window.exportarProductosExcel = async function() {
         mostrarNotificacion('Exportando...', 'success');
         const { data, error } = await supabaseClient.from('productos').select('codigo, nombre, precio, stock');
         
         if (error || !data.length) {
-            mostrarNotificacion('No hay productos', 'error');
+            mostrarNotificacion('No hay productos para exportar', 'error');
             return;
         }
 
@@ -229,29 +280,39 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!file) return;
 
         const reader = new FileReader();
+        
         reader.onload = async (e) => {
             try {
+                // 1. Leer el archivo
                 const data = new Uint8Array(e.target.result);
                 const workbook = XLSX.read(data, { type: 'array' });
                 const worksheet = workbook.Sheets[workbook.SheetNames[0]];
                 const json = XLSX.utils.sheet_to_json(worksheet);
                 
+                // Log para depurar en consola
+                console.log("Datos leídos del Excel:", json);
+
                 if (json.length === 0) {
-                    mostrarNotificacion('El archivo está vacío', 'error');
+                    mostrarNotificacion('El archivo está vacío.', 'error');
                     return;
                 }
 
-                // Limpiamos los nombres de las columnas (sin tildes, todo minúsculas)
+                // 2. Limpiar nombres de columnas (sin tildes, minúsculas, sin BOM)
                 const cleanJson = json.map(row => {
                     const cleanRow = {};
                     for (let key in row) {
-                        const cleanKey = key.trim().toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+                        const cleanKey = key.trim()
+                            .replace(/^\uFEFF/, '') 
+                            .toLowerCase()
+                            .normalize("NFD")
+                            .replace(/[\u0300-\u036f]/g, "");
+                        
                         cleanRow[cleanKey] = row[key];
                     }
                     return cleanRow;
                 });
 
-                // Mapeamos los datos buscando las columnas limpias
+                // 3. Mapear los datos
                 const productos = cleanJson.map(row => {
                     const codigo = String(row['codigo'] || '').trim();
                     const nombre = String(row['nombre'] || row['producto'] || '').trim();
@@ -262,26 +323,33 @@ document.addEventListener('DOMContentLoaded', () => {
                     const stock = parseInt(row['stock'] || 0) || 0;
 
                     if (!codigo || !nombre) return null;
+                    
                     return { codigo, nombre, precio, stock };
                 }).filter(p => p !== null);
 
                 if (productos.length === 0) {
-                    mostrarNotificacion('No se encontraron columnas válidas (Codigo, Nombre, Precio, Stock)', 'error');
+                    mostrarNotificacion('No se encontraron columnas válidas. Revisa la consola (F12).', 'error');
                     return;
                 }
 
-                const { error } = await supabaseClient.from('productos').upsert(productos, { onConflict: 'codigo' });
+                // 4. Guardar en Supabase
+                const { error } = await supabaseClient
+                    .from('productos')
+                    .upsert(productos, { onConflict: 'codigo' });
+
                 if (error) throw error;
 
+                // 5. Éxito
                 mostrarNotificacion(`¡Éxito! ${productos.length} productos cargados.`, 'success');
-                event.target.value = ''; // Limpiar input
-                cargarProductosAdmin(); // Recargar tabla
+                event.target.value = ''; 
+                cargarProductosAdmin(); 
 
             } catch (err) {
-                console.error("Error al leer el Excel:", err);
-                mostrarNotificacion('Error al leer el archivo. Asegúrate de que sea Excel o CSV.', 'error');
+                console.error("Error detallado:", err);
+                mostrarNotificacion('Error al leer el archivo. Revisa la consola (F12).', 'error');
             }
         };
+        
         reader.readAsArrayBuffer(file);
     };
 
@@ -307,40 +375,3 @@ document.addEventListener('DOMContentLoaded', () => {
         }, 3000);
     }
 });
-    // Descargar plantilla en blanco con formato .xlsx
-    window.descargarPlantillaExcel = function() {
-        try {
-            // Datos de ejemplo
-            const data = [
-                {
-                    'Codigo': 'Ejemplo: 8480013525103',
-                    'Nombre': 'Ejemplo: Leche Entera 1L',
-                    'Precio': 2.50,
-                    'Stock': 50
-                }
-            ];
-
-            // Crear la hoja de cálculo
-            const ws = XLSX.utils.json_to_sheet(data);
-            
-            // Ajustar el ancho de las columnas para que se vea bonito
-            ws['!cols'] = [
-                { wch: 25 }, // Ancho de Codigo
-                { wch: 35 }, // Ancho de Nombre
-                { wch: 12 }, // Ancho de Precio
-                { wch: 12 }  // Ancho de Stock
-            ];
-
-            // Crear el libro y añadir la hoja
-            const wb = XLSX.utils.book_new();
-            XLSX.utils.book_append_sheet(wb, ws, "Productos");
-
-            // Descargar el archivo
-            XLSX.writeFile(wb, "Plantilla_SmartPOS.xlsx");
-            mostrarNotificacion('Plantilla descargada correctamente', 'success');
-
-        } catch (err) {
-            console.error("Error al generar la plantilla:", err);
-            mostrarNotificacion('Error al generar la plantilla', 'error');
-        }
-    };
