@@ -1,45 +1,48 @@
+// ==================== VARIABLES GLOBALES ====================
+let carrito = [];
+const IVA_RATE = 0.18; // 18% de IVA
+
+// Referencias al DOM
 const inputCode = document.getElementById('posCode');
 const cartBody = document.getElementById('cartBody');
 
+// ==================== LÓGICA DEL CARRITO (POS) ====================
+
 // Escuchar la tecla Enter en el input para agregar producto
-inputCode.addEventListener('keydown', function(e) {
-    if (e.key === 'Enter') {
-        agregarProducto();
-    }
-});
+if (inputCode) {
+    inputCode.addEventListener('keydown', function(e) {
+        if (e.key === 'Enter') {
+            agregarProducto();
+        }
+    });
+}
 
 async function agregarProducto() {
     const codigo = inputCode.value.trim();
     if (!codigo) return;
 
-    // Sanitización básica del código (solo letras, números y guiones)
+    // Sanitización básica (solo letras, números y guiones)
     if (!/^[a-zA-Z0-9\-]+$/.test(codigo)) {
-        inputCode.style.backgroundColor = '#fee2e2';
-        setTimeout(() => { inputCode.style.backgroundColor = ''; }, 800);
         inputCode.value = '';
         return;
     }
 
-    // Buscamos el producto usando .limit(1) para evitar el error 406
+    // Buscamos el producto en Supabase
     const { data, error } = await supabaseClient
         .from('productos')
         .select('*')
         .eq('codigo', codigo)
         .limit(1);
 
-    // Si hay error o el array está vacío, el producto no existe
     if (error || !data || data.length === 0) {
         console.warn('Producto no encontrado:', codigo);
-        
-        // Efecto visual rojo en el input
-        inputCode.style.backgroundColor = '#fee2e2';
-        setTimeout(() => { inputCode.style.backgroundColor = ''; }, 800);
-        
+        // Efecto visual rojo (podemos usar una clase de CSS)
+        inputCode.classList.add('input-error');
+        setTimeout(() => inputCode.classList.remove('input-error'), 800);
         inputCode.value = '';
         return;
     }
 
-    // Extraemos el producto del array
     const producto = data[0];
 
     // Verificamos si ya está en el carrito
@@ -51,18 +54,17 @@ async function agregarProducto() {
             id: producto.id,
             codigo: producto.codigo,
             nombre: producto.nombre,
-            precio: producto.precio,
+            precio: Number(producto.precio),
             cantidad: 1
         });
     }
 
-    // Limpiamos el input y actualizamos la vista
     inputCode.value = '';
     renderCarrito();
 }
 
 function renderCarrito() {
-    cartBody.innerHTML = ''; // Limpiamos de forma segura
+    cartBody.innerHTML = ''; // Limpiamos la tabla
 
     if (carrito.length === 0) {
         const tr = document.createElement('tr');
@@ -79,21 +81,16 @@ function renderCarrito() {
     carrito.forEach((item, index) => {
         const tr = document.createElement('tr');
 
-        // Creamos las celdas y usamos textContent para evitar inyecciones HTML (XSS)
         const tdCodigo = document.createElement('td'); tdCodigo.textContent = item.codigo;
         const tdNombre = document.createElement('td'); tdNombre.textContent = item.nombre;
-        const tdPrecio = document.createElement('td'); tdPrecio.textContent = '$' + Number(item.precio).toFixed(2);
+        const tdPrecio = document.createElement('td'); tdPrecio.textContent = '$' + item.precio.toFixed(2);
         const tdCant = document.createElement('td'); tdCant.textContent = item.cantidad;
         const tdTotal = document.createElement('td'); tdTotal.textContent = '$' + (item.precio * item.cantidad).toFixed(2);
 
         const tdAccion = document.createElement('td');
         const btnEliminar = document.createElement('button');
         btnEliminar.textContent = 'X';
-        btnEliminar.style.color = 'red';
-        btnEliminar.style.border = 'none';
-        btnEliminar.style.background = 'none';
-        btnEliminar.style.cursor = 'pointer';
-        btnEliminar.style.fontWeight = 'bold';
+        btnEliminar.className = 'btn-eliminar'; // Usaremos una clase CSS
         btnEliminar.onclick = () => eliminarItem(index);
         tdAccion.appendChild(btnEliminar);
 
@@ -127,27 +124,38 @@ function eliminarItem(index) {
 
 async function cobrar() {
     if (carrito.length === 0) {
-        alert('El carrito está vacío');
+        mostrarNotificacion('El carrito está vacío', 'error');
         return;
     }
-    // La lógica de guardado en la base de datos la haremos en el siguiente paso
-    alert('¡Cobro exitoso! (La lógica de guardado la haremos en el siguiente paso)');
+    // Aquí irá la lógica de guardado en Supabase (siguiente paso)
+    mostrarNotificacion('¡Cobro exitoso! (Lógica pendiente)', 'success');
 }
-// ==================== MÓDULO DE PRODUCTOS ====================
+
+// ==================== VISTAS (ADMIN Y POS) ====================
 
 function abrirAdmin() {
-    document.querySelector('.pos-container').style.display = 'none';
-    document.getElementById('product-management').style.display = 'block';
+    document.getElementById('pos-view').classList.add('hidden');
+    document.getElementById('product-management').classList.remove('hidden');
     cargarProductosAdmin();
 }
 
 function cerrarAdmin() {
-    document.getElementById('product-management').style.display = 'none';
-    document.querySelector('.pos-container').style.display = 'grid';
+    document.getElementById('product-management').classList.add('hidden');
+    document.getElementById('pos-view').classList.remove('hidden');
+    
+    // Limpiar formulario
+    document.getElementById('newCodigo').value = '';
+    document.getElementById('newNombre').value = '';
+    document.getElementById('newPrecio').value = '';
+    document.getElementById('newStock').value = '';
 }
+
+// ==================== GESTIÓN DE PRODUCTOS ====================
 
 async function cargarProductosAdmin() {
     const tbody = document.getElementById('productTableBody');
+    if (!tbody) return;
+
     tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;">Cargando...</td></tr>';
 
     const { data, error } = await supabaseClient
@@ -161,7 +169,7 @@ async function cargarProductosAdmin() {
         return;
     }
 
-    tbody.innerHTML = ''; // Limpiamos
+    tbody.innerHTML = '';
 
     if (data.length === 0) {
         tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;">No hay productos registrados</td></tr>';
@@ -170,22 +178,16 @@ async function cargarProductosAdmin() {
 
     data.forEach(prod => {
         const tr = document.createElement('tr');
-        tr.style.borderBottom = '1px solid #e2e8f0';
-
-        // Usamos textContent para evitar XSS
-        const tdCodigo = document.createElement('td'); tdCodigo.textContent = prod.codigo; tdCodigo.style.padding = '12px';
-        const tdNombre = document.createElement('td'); tdNombre.textContent = prod.nombre; tdNombre.style.padding = '12px';
-        const tdPrecio = document.createElement('td'); tdPrecio.textContent = '$' + Number(prod.precio).toFixed(2); tdPrecio.style.padding = '12px';
-        const tdStock = document.createElement('td'); tdStock.textContent = prod.stock; tdStock.style.padding = '12px';
         
-        const tdAcciones = document.createElement('td'); tdAcciones.style.padding = '12px';
+        const tdCodigo = document.createElement('td'); tdCodigo.textContent = prod.codigo;
+        const tdNombre = document.createElement('td'); tdNombre.textContent = prod.nombre;
+        const tdPrecio = document.createElement('td'); tdPrecio.textContent = '$' + Number(prod.precio).toFixed(2);
+        const tdStock = document.createElement('td'); tdStock.textContent = prod.stock;
+        
+        const tdAcciones = document.createElement('td');
         const btnEliminar = document.createElement('button');
         btnEliminar.textContent = '🗑️';
-        btnEliminar.style.background = '#fee2e2';
-        btnEliminar.style.border = 'none';
-        btnEliminar.style.cursor = 'pointer';
-        btnEliminar.style.padding = '5px 10px';
-        btnEliminar.style.borderRadius = '4px';
+        btnEliminar.className = 'btn-icon btn-danger';
         btnEliminar.onclick = () => eliminarProducto(prod.id);
         tdAcciones.appendChild(btnEliminar);
 
@@ -204,7 +206,6 @@ async function guardarProducto() {
     const precio = parseFloat(document.getElementById('newPrecio').value);
     const stock = parseInt(document.getElementById('newStock').value);
 
-    // Validaciones de seguridad
     if (!codigo || !nombre || isNaN(precio) || isNaN(stock)) {
         mostrarNotificacion('Por favor, rellena todos los campos correctamente.', 'error');
         return;
@@ -215,26 +216,22 @@ async function guardarProducto() {
         return;
     }
 
-    // Insertar en Supabase
     const { error } = await supabaseClient
         .from('productos')
         .insert([{ codigo, nombre, precio, stock }]);
 
     if (error) {
         console.error('Error al guardar:', error);
-        
-        // Mensaje de error legible según el código de error de Supabase
-        if (error.code === '23505') { // UNIQUE violation
+        if (error.code === '23505') {
             mostrarNotificacion('Ese código de producto ya existe.', 'error');
-        } else if (error.code === '42501') { // RLS violation
-            mostrarNotificacion('Error de permisos. Revisa las políticas RLS de Supabase.', 'error');
+        } else if (error.code === '42501') {
+            mostrarNotificacion('Error de permisos en Supabase (RLS).', 'error');
         } else {
             mostrarNotificacion('Error al guardar: ' + error.message, 'error');
         }
         return;
     }
 
-    // Limpiar formulario y recargar tabla
     document.getElementById('newCodigo').value = '';
     document.getElementById('newNombre').value = '';
     document.getElementById('newPrecio').value = '';
@@ -242,45 +239,6 @@ async function guardarProducto() {
     
     mostrarNotificacion('Producto añadido correctamente', 'success');
     cargarProductosAdmin();
-}
-
-// Función auxiliar para notificaciones elegantes (Toasts)
-function mostrarNotificacion(mensaje, tipo) {
-    // Si ya existe una notificación, la eliminamos
-    let toast = document.getElementById('smartpos-toast');
-    if (toast) toast.remove();
-
-    toast = document.createElement('div');
-    toast.id = 'smartpos-toast';
-    
-    // Estilos en línea para no depender de CSS externo (aunque luego lo movemos)
-    toast.style.position = 'fixed';
-    toast.style.top = '20px';
-    toast.style.left = '50%';
-    toast.style.transform = 'translateX(-50%)';
-    toast.style.padding = '12px 24px';
-    toast.style.borderRadius = '8px';
-    toast.style.color = 'white';
-    toast.style.fontWeight = 'bold';
-    toast.style.zIndex = '9999';
-    toast.style.boxShadow = '0 4px 12px rgba(0,0,0,0.15)';
-    toast.style.transition = 'opacity 0.3s ease';
-    toast.style.opacity = '1';
-    
-    if (tipo === 'error') {
-        toast.style.backgroundColor = '#dc2626';
-    } else {
-        toast.style.backgroundColor = '#16a34a';
-    }
-
-    toast.textContent = mensaje;
-    document.body.appendChild(toast);
-
-    // Desvanecer y eliminar después de 3 segundos
-    setTimeout(() => {
-        toast.style.opacity = '0';
-        setTimeout(() => toast.remove(), 300);
-    }, 3000);
 }
 
 async function eliminarProducto(id) {
@@ -293,14 +251,132 @@ async function eliminarProducto(id) {
 
     if (error) {
         console.error('Error al eliminar:', error);
-        alert('No se pudo eliminar el producto.');
+        mostrarNotificacion('No se pudo eliminar el producto.', 'error');
         return;
     }
 
+    mostrarNotificacion('Producto eliminado', 'success');
     cargarProductosAdmin();
 }
 
+// ==================== IMPORTAR / EXPORTAR EXCEL ====================
+
+async function exportarProductosExcel() {
+    try {
+        mostrarNotificacion('Obteniendo productos...', 'success');
+        
+        const { data, error } = await supabaseClient
+            .from('productos')
+            .select('codigo, nombre, precio, stock')
+            .order('nombre', { ascending: true });
+
+        if (error) throw error;
+        if (!data || data.length === 0) {
+            mostrarNotificacion('No hay productos para exportar', 'error');
+            return;
+        }
+
+        const dataFormateada = data.map(p => ({
+            'Código': p.codigo,
+            'Nombre': p.nombre,
+            'Precio': p.precio,
+            'Stock': p.stock
+        }));
+
+        const worksheet = XLSX.utils.json_to_sheet(dataFormateada);
+        const workbook = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(workbook, worksheet, "Productos");
+        
+        XLSX.writeFile(workbook, "Inventario_SmartPOS.xlsx");
+        mostrarNotificacion('Inventario exportado correctamente', 'success');
+
+    } catch (err) {
+        console.error("Error al exportar:", err);
+        mostrarNotificacion('Error al exportar el archivo', 'error');
+    }
+}
+
+async function importarProductosExcel(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    
+    reader.onload = async (e) => {
+        try {
+            const data = new Uint8Array(e.target.result);
+            const workbook = XLSX.read(data, { type: 'array' });
+            
+            const firstSheetName = workbook.SheetNames[0];
+            const worksheet = workbook.Sheets[firstSheetName];
+            
+            const json = XLSX.utils.sheet_to_json(worksheet);
+            
+            if (json.length === 0) {
+                mostrarNotificacion('El archivo está vacío', 'error');
+                return;
+            }
+
+            mostrarNotificacion(`Procesando ${json.length} productos...`, 'success');
+
+            const productosParaSubir = json.map(row => {
+                const codigo = String(row['Código'] || row['Codigo'] || row['codigo'] || '').trim();
+                const nombre = String(row['Nombre'] || row['nombre'] || row['Producto'] || '').trim();
+                const precio = parseFloat(row['Precio'] || row['precio'] || 0);
+                const stock = parseInt(row['Stock'] || row['stock'] || 0);
+
+                if (!codigo || !nombre) return null;
+
+                return { codigo, nombre, precio, stock };
+            }).filter(p => p !== null);
+
+            if (productosParaSubir.length === 0) {
+                mostrarNotificacion('No se encontraron datos válidos.', 'error');
+                return;
+            }
+
+            const { error } = await supabaseClient
+                .from('productos')
+                .upsert(productosParaSubir, { onConflict: 'codigo' });
+
+            if (error) throw error;
+
+            mostrarNotificacion(`¡Éxito! ${productosParaSubir.length} productos cargados.`, 'success');
+            
+            event.target.value = '';
+            cargarProductosAdmin();
+
+        } catch (err) {
+            console.error("Error al importar:", err);
+            mostrarNotificacion('Error al leer el archivo Excel.', 'error');
+        }
+    };
+
+    reader.readAsArrayBuffer(file);
+}
+
+// ==================== MÓDULO DE ETIQUETAS ====================
+
 function abrirGeneradorEtiquetas() {
-    // Abre el index.html del módulo en una pestaña nueva
+    // Abre el módulo en una nueva pestaña
     window.open('modulos/etiquetas/index.html', '_blank');
+}
+
+// ==================== NOTIFICACIONES (TOAST) ====================
+
+function mostrarNotificacion(mensaje, tipo) {
+    let toast = document.getElementById('smartpos-toast');
+    if (toast) toast.remove();
+
+    toast = document.createElement('div');
+    toast.id = 'smartpos-toast';
+    toast.className = `toast ${tipo === 'error' ? 'toast-error' : 'toast-success'}`;
+    toast.textContent = mensaje;
+    
+    document.body.appendChild(toast);
+
+    setTimeout(() => {
+        toast.classList.add('fade-out');
+        setTimeout(() => toast.remove(), 300);
+    }, 3000);
 }

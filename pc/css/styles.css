@@ -239,3 +239,36 @@ main {
         grid-template-columns: 1fr;
     }
 }
+/* Botón de eliminar (X) en el carrito y admin */
+.btn-eliminar {
+    color: #dc2626;
+    background: none;
+    border: none;
+    font-weight: bold;
+    cursor: pointer;
+    font-size: 1.1rem;
+}
+
+.input-error {
+    border-color: #dc2626 !important;
+    background-color: #fee2e2 !important;
+}
+
+/* Notificaciones flotantes */
+.toast {
+    position: fixed;
+    top: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    padding: 12px 24px;
+    border-radius: 8px;
+    color: white;
+    font-weight: bold;
+    z-index: 9999;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    transition: opacity 0.3s ease;
+}
+
+.toast-success { background-color: #16a34a; }
+.toast-error { background-color: #dc2626; }
+.toast.fade-out { opacity: 0; }
