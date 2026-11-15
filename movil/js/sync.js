@@ -43,7 +43,7 @@ async function enviarCodigo(codigo) {
     }
 }
 
-// Iniciar Quagga
+// Iniciar Quagga (Optimizado para velocidad)
 function startScanner() {
     if (running) return;
     resultEl.classList.remove('show');
@@ -51,19 +51,26 @@ function startScanner() {
     Quagga.init({
         inputStream: {
             type: 'LiveStream',
-            target: container, // El contenedor principal
+            target: container,
             constraints: { 
-                facingMode: 'environment',
-                width: { ideal: 1280 },
-                height: { ideal: 720 }
+                facingMode: 'environment', // Cámara trasera
+                width: { ideal: 640 },     // Resolución óptima para velocidad
+                height: { ideal: 480 }
+            },
+            // Limitar la búsqueda al área del marco azul
+            area: { 
+                top: "25%", 
+                right: "25%", 
+                left: "25%", 
+                bottom: "25%" 
             }
         },
         locator: {
             patchSize: "medium",
-            halfSample: true
+            halfSample: true // Procesa la mitad de la imagen para ir más rápido
         },
         numOfWorkers: navigator.hardwareConcurrency || 2,
-        frequency: 10,
+        frequency: 15, // Intentar leer 15 veces por segundo
         decoder: {
             readers: ['ean_reader', 'ean_8_reader', 'code_128_reader', 'upc_reader']
         },
@@ -81,7 +88,7 @@ function startScanner() {
         startBtn.style.display = 'none';
         stopBtn.style.display = 'inline-block';
 
-        // Forzar que el video ocupe todo el contenedor
+        // Forzar que el video ocupe todo el contenedor visualmente
         setTimeout(() => {
             const videoElement = container.querySelector('video');
             if (videoElement) {
