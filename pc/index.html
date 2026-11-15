@@ -8,10 +8,13 @@
     <link rel="stylesheet" href="css/styles.css">
 </head>
 <body>
-    <header>
-        <h1>SmartPOS</h1>
+ <header>
+    <h1>SmartPOS</h1>
+    <div style="display: flex; gap: 15px; align-items: center;">
+        <button onclick="abrirAdmin()" style="background: #2563eb; color: white; border: none; padding: 8px 15px; border-radius: 6px; cursor: pointer;">⚙️ Productos</button>
         <div id="connection-status" class="status disconnected">Desconectado</div>
-    </header>
+    </div>
+</header>
 
     <main>
         <div class="pos-container">

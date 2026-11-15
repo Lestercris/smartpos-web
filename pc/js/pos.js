@@ -133,3 +133,125 @@ async function cobrar() {
     // La lógica de guardado en la base de datos la haremos en el siguiente paso
     alert('¡Cobro exitoso! (La lógica de guardado la haremos en el siguiente paso)');
 }
+// ==================== MÓDULO DE PRODUCTOS ====================
+
+function abrirAdmin() {
+    document.querySelector('.pos-container').style.display = 'none';
+    document.getElementById('product-management').style.display = 'block';
+    cargarProductosAdmin();
+}
+
+function cerrarAdmin() {
+    document.getElementById('product-management').style.display = 'none';
+    document.querySelector('.pos-container').style.display = 'grid';
+}
+
+async function cargarProductosAdmin() {
+    const tbody = document.getElementById('productTableBody');
+    tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;">Cargando...</td></tr>';
+
+    const { data, error } = await supabaseClient
+        .from('productos')
+        .select('*')
+        .order('nombre', { ascending: true });
+
+    if (error) {
+        console.error('Error cargando productos:', error);
+        tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; color:red;">Error al cargar</td></tr>';
+        return;
+    }
+
+    tbody.innerHTML = ''; // Limpiamos
+
+    if (data.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;">No hay productos registrados</td></tr>';
+        return;
+    }
+
+    data.forEach(prod => {
+        const tr = document.createElement('tr');
+        tr.style.borderBottom = '1px solid #e2e8f0';
+
+        // Usamos textContent para evitar XSS
+        const tdCodigo = document.createElement('td'); tdCodigo.textContent = prod.codigo; tdCodigo.style.padding = '12px';
+        const tdNombre = document.createElement('td'); tdNombre.textContent = prod.nombre; tdNombre.style.padding = '12px';
+        const tdPrecio = document.createElement('td'); tdPrecio.textContent = '$' + Number(prod.precio).toFixed(2); tdPrecio.style.padding = '12px';
+        const tdStock = document.createElement('td'); tdStock.textContent = prod.stock; tdStock.style.padding = '12px';
+        
+        const tdAcciones = document.createElement('td'); tdAcciones.style.padding = '12px';
+        const btnEliminar = document.createElement('button');
+        btnEliminar.textContent = '🗑️';
+        btnEliminar.style.background = '#fee2e2';
+        btnEliminar.style.border = 'none';
+        btnEliminar.style.cursor = 'pointer';
+        btnEliminar.style.padding = '5px 10px';
+        btnEliminar.style.borderRadius = '4px';
+        btnEliminar.onclick = () => eliminarProducto(prod.id);
+        tdAcciones.appendChild(btnEliminar);
+
+        tr.appendChild(tdCodigo);
+        tr.appendChild(tdNombre);
+        tr.appendChild(tdPrecio);
+        tr.appendChild(tdStock);
+        tr.appendChild(tdAcciones);
+        tbody.appendChild(tr);
+    });
+}
+
+async function guardarProducto() {
+    const codigo = document.getElementById('newCodigo').value.trim();
+    const nombre = document.getElementById('newNombre').value.trim();
+    const precio = parseFloat(document.getElementById('newPrecio').value);
+    const stock = parseInt(document.getElementById('newStock').value);
+
+    // Validaciones de seguridad
+    if (!codigo || !nombre || isNaN(precio) || isNaN(stock)) {
+        alert('Por favor, rellena todos los campos correctamente.');
+        return;
+    }
+
+    if (!/^[a-zA-Z0-9\-]+$/.test(codigo)) {
+        alert('El código solo puede contener letras, números y guiones.');
+        return;
+    }
+
+    // Insertar en Supabase
+    const { error } = await supabaseClient
+        .from('productos')
+        .insert([{ codigo, nombre, precio, stock }]);
+
+    if (error) {
+        console.error('Error al guardar:', error);
+        if (error.code === '23505') { // Código de error para UNIQUE violation
+            alert('Ese código de producto ya existe.');
+        } else {
+            alert('Error al guardar el producto.');
+        }
+        return;
+    }
+
+    // Limpiar formulario y recargar tabla
+    document.getElementById('newCodigo').value = '';
+    document.getElementById('newNombre').value = '';
+    document.getElementById('newPrecio').value = '';
+    document.getElementById('newStock').value = '';
+    
+    cargarProductosAdmin();
+}
+
+async function eliminarProducto(id) {
+    if (!confirm('¿Estás seguro de eliminar este producto?')) return;
+
+    const { error } = await supabaseClient
+        .from('productos')
+        .delete()
+        .eq('id', id);
+
+    if (error) {
+        console.error('Error al eliminar:', error);
+        alert('No se pudo eliminar el producto.');
+        return;
+    }
+
+    cargarProductosAdmin();
+}
