@@ -10,7 +10,8 @@ const moduloTicket = {
                 contenedor.innerHTML = html;
                 document.body.appendChild(contenedor);
                 this.bindEvents();
-            });
+            })
+            .catch(err => console.error("Error cargando el módulo de ticket:", err));
     },
 
     bindEvents: function() {
@@ -30,20 +31,20 @@ const moduloTicket = {
     },
 
     mostrar: function(venta) {
-        // venta = { id, total, usuario, items: [{nombre, cantidad, precio, total}], subtotal, iva }
-        
+        // 1. Llenar los datos básicos
         document.getElementById('tk-id').textContent = String(venta.id).padStart(6, '0');
         
         const fecha = new Date();
         document.getElementById('tk-fecha').textContent = fecha.toLocaleString();
         document.getElementById('tk-vendedor').textContent = venta.usuario;
 
-        // Llenar los productos
+        // 2. Llenar la tabla de productos
         const tbody = document.getElementById('tk-productos');
         tbody.innerHTML = '';
         
         venta.items.forEach(item => {
             const tr = document.createElement('tr');
+            // Usamos textContent implícito en innerHTML pero controlado
             tr.innerHTML = `
                 <td>${item.cantidad}</td>
                 <td>${item.nombre}</td>
@@ -52,12 +53,31 @@ const moduloTicket = {
             tbody.appendChild(tr);
         });
 
-        // Llenar totales
+        // 3. Llenar los totales
         document.getElementById('tk-subtotal').textContent = '$' + venta.subtotal.toFixed(2);
         document.getElementById('tk-iva').textContent = '$' + venta.iva.toFixed(2);
         document.getElementById('tk-total').textContent = '$' + venta.total.toFixed(2);
 
-        // Mostrar el modal
+        // 4. GENERAR EL CÓDIGO DE BARRAS DEL TICKET
+        try {
+            const codigoTicket = 'T-' + String(venta.id).padStart(6, '0');
+            
+            // JsBarcode dibuja el código en el SVG con id "tk-barcode"
+            JsBarcode("#tk-barcode", codigoTicket, {
+                format: "CODE128",
+                lineColor: "#000",
+                width: 2,
+                height: 40,
+                displayValue: false // Ocultamos el texto por defecto para usar el nuestro
+            });
+            
+            document.getElementById('tk-barcode-text').textContent = codigoTicket;
+            
+        } catch (err) {
+            console.error("Error generando código de barras:", err);
+        }
+
+        // 5. Mostrar la ventana modal
         document.getElementById('ticket-modal').classList.add('active');
     }
 };

@@ -198,7 +198,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     items: carritoCopia,
                     subtotal: subtotal,
                     iva: iva,
-                    total: data.total // Usamos el total validado por la base de datos
+                    total:total // Usamos el total validado por la base de datos
                 });
             } else {
                 console.warn('El módulo de ticket no está cargado.');
