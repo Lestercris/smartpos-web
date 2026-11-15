@@ -1,9 +1,8 @@
-// ⚠️ TUS CREDENCIALES DE SUPABASE (las mismas de la PC)
+// ⚠️ TUS CREDENCIALES DE SUPABASE
 const SUPABASE_URL = 'https://aqkwuwsogrrllatyhrfz.supabase.co';
 const SUPABASE_ANON_KEY = 'sb_publishable_GnsebOkP_46qA05Q-r20cA_mKQjuFwX';
 
 document.addEventListener('DOMContentLoaded', async () => {
-    // 1. Inicializar Supabase
     if (typeof supabase === 'undefined') {
         alert("Error crítico: La librería de Supabase no se cargó.");
         return;
@@ -16,7 +15,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     container.innerHTML = '<p style="text-align:center; width:100%;">Cargando productos...</p>';
 
     try {
-        // 2. Cargar productos
         const { data, error } = await supabaseClient.from('productos').select('*').order('nombre');
         
         if (error) throw error;
@@ -27,12 +25,35 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         container.innerHTML = '';
 
-        // 3. Generar la vista
         data.forEach((prod, index) => {
             const wrapper = document.createElement('div');
             wrapper.className = 'etiqueta-wrapper';
 
-            // Selector de cantidad
+            // 1. Checkbox para mostrar/ocultar en impresión
+            const chkWrapper = document.createElement('div');
+            chkWrapper.className = 'checkbox-wrapper';
+            
+            const chk = document.createElement('input');
+            chk.type = 'checkbox';
+            chk.id = 'chk-print-' + index;
+            chk.checked = true; // Marcado por defecto
+            chk.addEventListener('change', (e) => {
+                // Si se desmarca, añade la clase 'desactivada' al contenedor
+                if (e.target.checked) {
+                    wrapper.classList.remove('desactivada');
+                } else {
+                    wrapper.classList.add('desactivada');
+                }
+            });
+
+            const lblChk = document.createElement('label');
+            lblChk.htmlFor = 'chk-print-' + index;
+            lblChk.textContent = 'Imprimir';
+
+            chkWrapper.appendChild(chk);
+            chkWrapper.appendChild(lblChk);
+
+            // 2. Selector de cantidad
             const cantWrapper = document.createElement('div');
             cantWrapper.className = 'cantidad-wrapper';
             
@@ -47,7 +68,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             cantWrapper.appendChild(label);
             cantWrapper.appendChild(inputCant);
 
-            // Etiqueta
+            // 3. Etiqueta visual
             const div = document.createElement('div');
             div.className = 'etiqueta';
 
@@ -71,6 +92,8 @@ document.addEventListener('DOMContentLoaded', async () => {
             div.appendChild(svg);
             div.appendChild(pCodigo);
             
+            // Ensamblar
+            wrapper.appendChild(chkWrapper);
             wrapper.appendChild(cantWrapper);
             wrapper.appendChild(div);
             container.appendChild(wrapper);
@@ -97,6 +120,12 @@ document.addEventListener('DOMContentLoaded', async () => {
             const wrappers = document.querySelectorAll('.etiqueta-wrapper');
             
             wrappers.forEach(wrapper => {
+                // Verificamos si el checkbox de esta etiqueta está marcado
+                const chk = wrapper.querySelector('input[type="checkbox"]');
+                if (chk && !chk.checked) {
+                    return; // Si no está marcado, lo saltamos (no se imprime)
+                }
+
                 const input = wrapper.querySelector('input[type="number"]');
                 const etiquetaOriginal = wrapper.querySelector('.etiqueta');
                 
@@ -108,6 +137,11 @@ document.addEventListener('DOMContentLoaded', async () => {
                     printContainer.appendChild(etiquetaOriginal.cloneNode(true));
                 }
             });
+
+            if (printContainer.children.length === 0) {
+                alert("No has seleccionado ninguna etiqueta para imprimir.");
+                return;
+            }
 
             document.body.appendChild(printContainer);
             window.print();
@@ -124,7 +158,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     const btnCerrar = document.getElementById('btnCerrarEtiquetas');
     if (btnCerrar) {
         btnCerrar.addEventListener('click', () => {
-            window.close(); // Intenta cerrar la pestaña
+            window.close();
         });
     }
 });
