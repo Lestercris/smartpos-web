@@ -3,7 +3,7 @@ document.addEventListener('DOMContentLoaded', () => {
     
     // ==================== VARIABLES GLOBALES ====================
     let carrito = [];
-    const IVA_RATE = 0.18; // 18% de IVA (lo haremos dinámico más adelante)
+    const IVA_RATE = 0.18; // 18% de IVA
 
     // Referencias al DOM
     const inputCode = document.getElementById('posCode');
@@ -89,7 +89,6 @@ document.addEventListener('DOMContentLoaded', () => {
         carrito.forEach((item, index) => {
             const tr = document.createElement('tr');
             
-            // Usamos textContent para evitar inyecciones HTML (XSS)
             const tdCodigo = document.createElement('td'); tdCodigo.textContent = item.codigo;
             const tdNombre = document.createElement('td'); tdNombre.textContent = item.nombre;
             const tdPrecio = document.createElement('td'); tdPrecio.textContent = '$' + item.precio.toFixed(2);
@@ -138,9 +137,13 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
 
-        // 1. GUARDAMOS UNA COPIA DEL CARRITO ANTES DE VACIARLO
-        const carritoCopia = carrito.map(item => ({ ...item }));
-        const subtotal = carritoCopia.reduce((sum, item) => sum + (item.precio * item.cantidad), 0);
+        // 1. GUARDAMOS UNA COPIA DEL CARRITO Y CALCULAMOS EL TOTAL POR ÍTEM
+        const carritoCopia = carrito.map(item => ({
+            ...item,
+            total: item.precio * item.cantidad // <-- AÑADIDO PARA SOLUCIONAR EL ERROR
+        }));
+        
+        const subtotal = carritoCopia.reduce((sum, item) => sum + item.total, 0);
         const iva = subtotal * IVA_RATE;
         const total = subtotal + iva;
 
