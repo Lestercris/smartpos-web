@@ -4,15 +4,10 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>SmartPOS - Punto de Venta</title>
-    
-    <!-- Librerías base -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://cdn.sheetjs.com/xlsx-0.20.0/package/dist/xlsx.full.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.6/dist/JsBarcode.all.min.js"></script>
-
-    <!-- Estilos -->
     <link rel="stylesheet" href="css/styles.css">
-    <!-- Estilos del Ticket -->
     <link rel="stylesheet" href="modulos/ticket/ticket.css">
 </head>
 <body>
@@ -35,19 +30,8 @@
                 </div>
                 <div class="table-responsive">
                     <table class="data-table">
-                        <thead>
-                            <tr>
-                                <th>Código</th>
-                                <th>Producto</th>
-                                <th>Precio</th>
-                                <th>Cant.</th>
-                                <th>Total</th>
-                                <th></th>
-                            </tr>
-                        </thead>
-                        <tbody id="cartBody">
-                            <tr><td colspan="6" class="empty">Carrito vacío</td></tr>
-                        </tbody>
+                        <thead><tr><th>Código</th><th>Producto</th><th>Precio</th><th>Cant.</th><th>Total</th><th></th></tr></thead>
+                        <tbody id="cartBody"><tr><td colspan="6" class="empty">Carrito vacío</td></tr></tbody>
                     </table>
                 </div>
             </div>
@@ -55,7 +39,7 @@
             <div class="totals-panel">
                 <h2 class="panel-title">Resumen</h2>
                 <div class="total-row"><span>Subtotal:</span><span id="tSub">$0.00</span></div>
-                <div class="total-row"><span>IVA (18%):</span><span id="tIva">$0.00</span></div>
+                <div class="total-row"><span>IVA:</span><span id="tIva">$0.00</span></div>
                 <div class="total-row big"><span>TOTAL:</span><span id="tTot">$0.00</span></div>
                 <button class="btn btn-success btn-cobrar" onclick="cobrar()">COBRAR</button>
             </div>
@@ -64,7 +48,6 @@
         <!-- ================= VISTA ADMINISTRACIÓN ================= -->
         <section id="admin-view" class="admin-section hidden">
             <div class="admin-card">
-                
                 <div class="admin-header">
                     <h2>Administración</h2>
                     <div class="admin-actions">
@@ -90,91 +73,58 @@
                     </div>
                     
                     <div class="form-grid-productos">
-                        <div class="form-field">
-                            <label>Código</label>
-                            <input type="text" id="newCodigo" placeholder="Ej: 8480013525103">
-                        </div>
-                        <div class="form-field">
-                            <label>Producto</label>
-                            <input type="text" id="newNombre" placeholder="Ej: Leche Entera 1L">
-                        </div>
-                        <div class="form-field">
-                            <label>Proveedor</label>
-                            <select id="newProveedor"><option value="">Seleccione...</option></select>
-                        </div>
-                        <div class="form-field">
-                            <label>Categoría</label>
-                            <select id="newCategoria"><option value="">Seleccione...</option></select>
-                        </div>
-                        <div class="form-field">
-                            <label>Subcategoría</label>
-                            <select id="newSubcategoria"><option value="">Seleccione...</option></select>
-                        </div>
-                        <div class="form-field">
-                            <label>U. Medida</label>
-                            <select id="newMedidaSelect"><option value="">Seleccione...</option></select>
-                        </div>
-                        <div class="form-field">
-                            <label>Ubicación</label>
-                            <select id="newUbicacion"><option value="">Seleccione...</option></select>
-                        </div>
-                        
-                        <div class="form-field">
-                            <label>Stock Mínimo</label>
-                            <input type="number" id="newStockMin" placeholder="0">
-                        </div>
-                        <div class="form-field">
-                            <label>Stock Actual</label>
-                            <input type="number" id="newStock" placeholder="0">
-                        </div>
-                        <div class="form-field">
-                            <label>Precio Compra</label>
-                            <input type="number" id="newPrecioCompra" placeholder="0.00" step="0.01">
-                        </div>
-                        <div class="form-field">
-                            <label>Precio Venta</label>
-                            <input type="number" id="newPrecio" placeholder="0.00" step="0.01">
-                        </div>
-                        
-                        <!-- INTERRUPTOR DE IVA -->
+                        <div class="form-field"><label>Código</label><input type="text" id="newCodigo" placeholder="Ej: 8480013525103"></div>
+                        <div class="form-field"><label>Producto</label><input type="text" id="newNombre" placeholder="Ej: Leche Entera 1L"></div>
+                        <div class="form-field"><label>Proveedor</label><select id="newProveedor"><option value="">Seleccione...</option></select></div>
+                        <div class="form-field"><label>Categoría</label><select id="newCategoria"><option value="">Seleccione...</option></select></div>
+                        <div class="form-field"><label>Subcategoría</label><select id="newSubcategoria"><option value="">Seleccione...</option></select></div>
+                        <div class="form-field"><label>U. Medida</label><select id="newMedidaSelect"><option value="">Seleccione...</option></select></div>
+                        <div class="form-field"><label>Ubicación</label><select id="newUbicacion"><option value="">Seleccione...</option></select></div>
+                        <div class="form-field"><label>Stock Mínimo</label><input type="number" id="newStockMin" placeholder="0"></div>
+                        <div class="form-field"><label>Stock Actual</label><input type="number" id="newStock" placeholder="0"></div>
+                        <div class="form-field"><label>Precio Compra</label><input type="number" id="newPrecioCompra" placeholder="0.00" step="0.01"></div>
+                        <div class="form-field"><label>Precio Venta</label><input type="number" id="newPrecio" placeholder="0.00" step="0.01"></div>
                         <div class="form-field" style="flex-direction: row; align-items: center; gap: 10px; height: 42px; background: white; padding: 0 10px; border: 1px solid #cbd5e1; border-radius: 6px;">
                             <input type="checkbox" id="newAplicaIva" checked style="width: 18px; height: 18px; cursor: pointer;">
-                            <label for="newAplicaIva" style="margin: 0; cursor: pointer; font-size: 14px;">Cobra IVA (18%)</label>
+                            <label for="newAplicaIva" style="margin: 0; cursor: pointer; font-size: 14px;">Cobra IVA</label>
                         </div>
+                        <div class="form-field"><label>Imagen</label><input type="file" id="newImagen" accept="image/*" class="input-file"></div>
+                        <div class="form-field btn-field"><button class="btn btn-primary" onclick="guardarProducto()">+ Añadir</button></div>
+                    </div>
 
-                        <div class="form-field">
-                            <label>Imagen</label>
-                            <input type="file" id="newImagen" accept="image/*" class="input-file">
+                    <!-- BARRA DE HERRAMIENTAS DE LA TABLA -->
+                    <div class="table-toolbar">
+                        <div class="search-box">
+                            <input type="text" id="searchProduct" placeholder="🔍 Buscar por código, nombre o categoría..." oninput="filtrarProductos()">
                         </div>
-                        <div class="form-field btn-field">
-                            <button class="btn btn-primary" onclick="guardarProducto()">+ Añadir</button>
+                        <div class="pagination-controls">
+                            <label>Mostrar:</label>
+                            <select id="itemsPerPage" onchange="cambiarItemsPorPagina(this.value)">
+                                <option value="5">5</option>
+                                <option value="10" selected>10</option>
+                                <option value="25">25</option>
+                                <option value="50">50</option>
+                                <option value="100">100</option>
+                                <option value="200">200</option>
+                            </select>
                         </div>
                     </div>
 
                     <div class="table-responsive">
                         <table class="data-table">
-                            <thead>
-                                <tr>
-                                    <th>Imagen</th>
-                                    <th>Cod</th>
-                                    <th>Producto</th>
-                                    <th>Categoría</th>
-                                    <th>Medida</th>
-                                    <th>Stock Min</th>
-                                    <th>Stock Act</th>
-                                    <th>P. Compra</th>
-                                    <th>P. Venta</th>
-                                    <th>IVA</th>
-                                    <th>Margen</th>
-                                    <th>% Margen</th>
-                                    <th>Proveedor</th>
-                                    <th>Acciones</th>
-                                </tr>
-                            </thead>
-                            <tbody id="productTableBody">
-                                <!-- Productos -->
-                            </tbody>
+                            <thead><tr><th>Imagen</th><th>Cod</th><th>Producto</th><th>Categoría</th><th>Medida</th><th>St. Min</th><th>St. Act</th><th>P. Compra</th><th>P. Venta</th><th>IVA</th><th>Margen</th><th>%</th><th>Proveedor</th><th>Acciones</th></tr></thead>
+                            <tbody id="productTableBody"></tbody>
                         </table>
+                    </div>
+
+                    <!-- PAGINACIÓN -->
+                    <div class="pagination-footer">
+                        <span id="paginationInfo">Mostrando 0 de 0</span>
+                        <div class="pagination-buttons">
+                            <button class="btn btn-secondary btn-sm" onclick="cambiarPagina(-1)" id="prevPageBtn">← Anterior</button>
+                            <span id="pageInfo">Página 1 de 1</span>
+                            <button class="btn btn-secondary btn-sm" onclick="cambiarPagina(1)" id="nextPageBtn">Siguiente →</button>
+                        </div>
                     </div>
                 </div>
 
@@ -188,10 +138,7 @@
                         <div class="form-field"><label>Dirección</label><input type="text" id="cliDireccion" placeholder="Dirección"></div>
                         <div class="form-field btn-field"><button class="btn btn-primary" onclick="guardarCliente()">+ Añadir</button></div>
                     </div>
-                    <table class="data-table">
-                        <thead><tr><th>Doc</th><th>Nombre</th><th>Teléfono</th><th>Dirección</th><th></th></tr></thead>
-                        <tbody id="clientesTableBody"></tbody>
-                    </table>
+                    <table class="data-table"><thead><tr><th>Doc</th><th>Nombre</th><th>Teléfono</th><th>Dirección</th><th></th></tr></thead><tbody id="clientesTableBody"></tbody></table>
                 </div>
 
                 <!-- ================= PESTAÑA: PROVEEDORES ================= -->
@@ -204,10 +151,7 @@
                         <div class="form-field"><label>Contacto</label><input type="text" id="provContacto" placeholder="Contacto"></div>
                         <div class="form-field btn-field"><button class="btn btn-primary" onclick="guardarProveedor()">+ Añadir</button></div>
                     </div>
-                    <table class="data-table">
-                        <thead><tr><th>Doc</th><th>Nombre</th><th>Contacto</th><th>Teléfono</th><th></th></tr></thead>
-                        <tbody id="proveedoresTableBody"></tbody>
-                    </table>
+                    <table class="data-table"><thead><tr><th>Doc</th><th>Nombre</th><th>Contacto</th><th>Teléfono</th><th></th></tr></thead><tbody id="proveedoresTableBody"></tbody></table>
                 </div>
 
                 <!-- ================= PESTAÑA: AJUSTES ================= -->
@@ -215,61 +159,28 @@
                     <div class="grid-ajustes">
                         <div class="card-inner">
                             <h3>Categorías</h3>
-                            <div class="input-row mb-20">
-                                <input type="text" id="newCatNombre" placeholder="Nueva categoría">
-                                <button class="btn btn-primary" onclick="guardarCategoria()">+</button>
-                            </div>
+                            <div class="input-row mb-20"><input type="text" id="newCatNombre" placeholder="Nueva categoría"><button class="btn btn-primary" onclick="guardarCategoria()">+</button></div>
                             <ul id="listaCategorias" class="list-group"></ul>
                         </div>
-                        
                         <div class="card-inner">
                             <h3>Subcategorías</h3>
-                            <div class="form-field mb-20">
-                                <label>Categoría Padre</label>
-                                <select id="newSubCatPadre"><option value="">Seleccione categoría...</option></select>
-                            </div>
-                            <div class="form-field mb-20">
-                                <label>Nombre Subcategoría</label>
-                                <div class="input-row">
-                                    <input type="text" id="newSubCatNombre" placeholder="Ej: Gaseosas">
-                                    <button class="btn btn-primary" onclick="guardarSubcategoria()">+</button>
-                                </div>
-                            </div>
+                            <div class="form-field mb-20"><label>Categoría Padre</label><select id="newSubCatPadre"><option value="">Seleccione categoría...</option></select></div>
+                            <div class="form-field mb-20"><label>Nombre Subcategoría</label><div class="input-row"><input type="text" id="newSubCatNombre" placeholder="Ej: Gaseosas"><button class="btn btn-primary" onclick="guardarSubcategoria()">+</button></div></div>
                             <ul id="listaSubcategorias" class="list-group"></ul>
                         </div>
-
                         <div class="card-inner">
                             <h3>Ubicaciones</h3>
-                            <div class="input-row mb-20">
-                                <input type="text" id="newUbicNombre" placeholder="Ej: Pasillo A, Estante 1">
-                                <button class="btn btn-primary" onclick="guardarUbicacion()">+</button>
-                            </div>
+                            <div class="input-row mb-20"><input type="text" id="newUbicNombre" placeholder="Ej: Pasillo A, Estante 1"><button class="btn btn-primary" onclick="guardarUbicacion()">+</button></div>
                             <ul id="listaUbicaciones" class="list-group"></ul>
                         </div>
-
                         <div class="card-inner">
                             <h3>Unidades de Medida</h3>
-                            <div class="form-field mb-20">
-                                <label>Nueva Unidad</label>
-                                <div class="input-row">
-                                    <input type="text" id="newUMedNombre" placeholder="Nombre (Ej: Kilogramo)">
-                                    <input type="text" id="newUMedAbrev" placeholder="Abrev (Ej: KG)">
-                                    <button class="btn btn-primary" onclick="guardarUMedida()">+</button>
-                                </div>
-                            </div>
+                            <div class="form-field mb-20"><label>Nueva Unidad</label><div class="input-row"><input type="text" id="newUMedNombre" placeholder="Nombre (Ej: Kilogramo)"><input type="text" id="newUMedAbrev" placeholder="Abrev (Ej: KG)"><button class="btn btn-primary" onclick="guardarUMedida()">+</button></div></div>
                             <ul id="listaUMedidas" class="list-group"></ul>
                         </div>
-
                         <div class="card-inner">
                             <h3>Tipos de Documento</h3>
-                            <div class="form-field mb-20">
-                                <label>Nuevo Tipo</label>
-                                <div class="input-row">
-                                    <input type="text" id="newTipoDocNombre" placeholder="Nombre (Ej: Pasaporte)">
-                                    <input type="text" id="newTipoDocAbrev" placeholder="Abrev (Ej: PAS)">
-                                    <button class="btn btn-primary" onclick="guardarTipoDoc()">+</button>
-                                </div>
-                            </div>
+                            <div class="form-field mb-20"><label>Nuevo Tipo</label><div class="input-row"><input type="text" id="newTipoDocNombre" placeholder="Nombre (Ej: Pasaporte)"><input type="text" id="newTipoDocAbrev" placeholder="Abrev (Ej: PAS)"><button class="btn btn-primary" onclick="guardarTipoDoc()">+</button></div></div>
                             <ul id="listaTiposDoc" class="list-group"></ul>
                         </div>
                     </div>
@@ -278,11 +189,9 @@
         </section>
     </main>
 
-    <!-- Nuestros scripts (El orden importa) -->
     <script src="js/db.js"></script>
     <script src="js/pos.js"></script>
     <script src="js/realtime.js"></script>
-    <!-- Script del ticket -->
     <script src="modulos/ticket/ticket.js"></script>
 </body>
 </html>
