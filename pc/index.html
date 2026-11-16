@@ -14,6 +14,8 @@
     <header class="app-header">
         <h1>SmartPOS</h1>
         <div class="header-actions">
+            <!-- NUEVO BOTÓN DE CAJA -->
+            <button id="btnCaja" class="btn btn-success" onclick="abrirModalCaja()">🟢 Abrir Caja</button>
             <button class="btn btn-primary" onclick="abrirAdmin()">⚙️ Administración</button>
             <div id="connection-status" class="status disconnected">Desconectado</div>
         </div>
@@ -41,7 +43,7 @@
                 <div class="total-row"><span>Subtotal:</span><span id="tSub">$0.00</span></div>
                 <div class="total-row"><span>IVA:</span><span id="tIva">$0.00</span></div>
                 <div class="total-row big"><span>TOTAL:</span><span id="tTot">$0.00</span></div>
-                <button class="btn btn-success btn-cobrar" onclick="cobrar()">COBRAR</button>
+                <button class="btn btn-success btn-cobrar" id="btnCobrar" onclick="cobrar()">COBRAR</button>
             </div>
         </div>
 
@@ -92,7 +94,6 @@
                         <div class="form-field btn-field"><button class="btn btn-primary" onclick="guardarProducto()">+ Añadir</button></div>
                     </div>
 
-                    <!-- BARRA DE HERRAMIENTAS DE LA TABLA -->
                     <div class="table-toolbar">
                         <div class="search-box">
                             <input type="text" id="searchProduct" placeholder="🔍 Buscar por código, nombre o categoría..." oninput="filtrarProductos()">
@@ -117,7 +118,6 @@
                         </table>
                     </div>
 
-                    <!-- PAGINACIÓN -->
                     <div class="pagination-footer">
                         <span id="paginationInfo">Mostrando 0 de 0</span>
                         <div class="pagination-buttons">
@@ -187,6 +187,26 @@
                 </div>
             </div>
         </section>
+
+        <!-- MODAL DE CAJA -->
+        <div class="modal-overlay hidden" id="modalCaja">
+            <div class="modal-box">
+                <h2 id="cajaModalTitle">Abrir Caja</h2>
+                <div class="form-field mb-20">
+                    <label id="cajaModalLabel">Monto Inicial (Vuelto)</label>
+                    <input type="number" id="cajaMonto" step="0.01" placeholder="0.00">
+                </div>
+                <div class="form-field mb-20">
+                    <label>Notas (opcional)</label>
+                    <input type="text" id="cajaNotas" placeholder="Ej: Turno mañana">
+                </div>
+                <div id="cajaResultado" class="hidden mb-20"></div>
+                <div class="modal-actions">
+                    <button class="btn btn-secondary" onclick="cerrarModalCaja()">Cancelar</button>
+                    <button class="btn btn-primary" id="btnConfirmarCaja" onclick="confirmarCaja()">Confirmar</button>
+                </div>
+            </div>
+        </div>
     </main>
 
     <script src="js/db.js"></script>
