@@ -1,17 +1,21 @@
-// ⚠️ PEGA AQUÍ TUS CREDENCIALES DE SUPABASE ⚠️
+// ⚠️ TUS CREDENCIALES
 const SUPABASE_URL = 'https://aqkwuwsogrrllatyhrfz.supabase.co';
 const SUPABASE_ANON_KEY = 'sb_publishable_GnsebOkP_46qA05Q-r20cA_mKQjuFwX';
-
 const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 const resultEl = document.getElementById('result');
 const startBtn = document.getElementById('startBtn');
 const stopBtn = document.getElementById('stopBtn');
-const container = document.getElementById('interactive'); // Apunta al div interno
+const container = document.getElementById('interactive');
 let running = false;
 
-// Función para enviar el código a Supabase
+// BANDERA DE CONTROL: Evita que lea el mismo código 20 veces mientras lo envía
+let isProcessing = false; 
+
+// Enviar código a Supabase
 async function enviarCodigo(codigo) {
+    isProcessing = true; // Bloqueamos la lectura
+    
     try {
         resultEl.textContent = '⏳ Enviando...';
         resultEl.className = 'show';
@@ -26,10 +30,11 @@ async function enviarCodigo(codigo) {
         resultEl.className = 'show success';
         if (navigator.vibrate) navigator.vibrate(200);
         
+        // Solo esperamos 1.5 segundos para que el usuario vea el mensaje
         setTimeout(() => {
             resultEl.classList.remove('show');
-            startScanner();
-        }, 2000);
+            isProcessing = false; // Desbloqueamos la lectura
+        }, 1500);
 
     } catch (error) {
         console.error(error);
@@ -38,12 +43,12 @@ async function enviarCodigo(codigo) {
         
         setTimeout(() => {
             resultEl.classList.remove('show');
-            startScanner();
-        }, 3000);
+            isProcessing = false; // Desbloqueamos la lectura
+        }, 2000);
     }
 }
 
-// Iniciar Quagga (Optimizado para precisión)
+// Iniciar Quagga
 function startScanner() {
     if (running) return;
     resultEl.classList.remove('show');
@@ -53,20 +58,15 @@ function startScanner() {
             type: 'LiveStream',
             target: container,
             constraints: { 
-                facingMode: 'environment', // Cámara trasera
-                width: { ideal: 1024 },    // Resolución intermedia (más nítida que 640)
-                height: { ideal: 768 }
+                facingMode: 'environment', 
+                width: { ideal: 800 }, // Un poco más bajo para que el procesamiento sea instantáneo
+                height: { ideal: 600 }
             }
         },
-        locator: {
-            patchSize: "medium",
-            halfSample: true // Procesa rápido sin perder demasiada calidad
-        },
+        locator: { patchSize: "medium", halfSample: true },
         numOfWorkers: navigator.hardwareConcurrency || 2,
-        frequency: 15, // 15 lecturas por segundo
-        decoder: {
-            readers: ['ean_reader', 'ean_8_reader', 'code_128_reader', 'upc_reader']
-        },
+        frequency: 20, // Intenta leer 20 veces por segundo (súper rápido)
+        decoder: { readers: ['ean_reader', 'ean_8_reader', 'code_128_reader', 'upc_reader'] },
         locate: true
     }, function(err) {
         if (err) {
@@ -80,38 +80,27 @@ function startScanner() {
         running = true;
         startBtn.style.display = 'none';
         stopBtn.style.display = 'flex';
-
-        // Asegurar que el video se expanda correctamente
-        setTimeout(() => {
-            const videoElement = container.querySelector('video');
-            if (videoElement) {
-                videoElement.style.position = 'absolute';
-                videoElement.style.top = '0';
-                videoElement.style.left = '0';
-                videoElement.style.width = '100%';
-                videoElement.style.height = '100%';
-                videoElement.style.objectFit = 'cover';
-            }
-        }, 100);
     });
 }
 
-// Detener Quagga
+// Detener Quagga (Solo cuando el usuario pulsa el botón rojo)
 function stopScanner() {
     if (!running) return;
     Quagga.stop();
     running = false;
+    isProcessing = false;
     startBtn.style.display = 'flex';
     stopBtn.style.display = 'none';
-    container.innerHTML = ''; // Limpiar el video
+    container.innerHTML = ''; 
 }
 
-// Evento cuando Quagga detecta un código (CON FILTRO ANTI-FALSOS POSITIVOS)
+// Evento cuando Quagga detecta un código
 Quagga.onDetected(function(result) {
-    if (!running) return;
+    // Si no está corriendo, o si ya estamos procesando un código, ignoramos
+    if (!running || isProcessing) return; 
     if (!result || !result.codeResult || !result.codeResult.code) return;
 
-    // 1. FILTRO DE CALIDAD (Evita que se invente los números)
+    // Filtro de calidad
     if (result.codeResult.decodedCodes) {
         const errores = result.codeResult.decodedCodes
             .filter(x => x.error !== undefined)
@@ -119,24 +108,11 @@ Quagga.onDetected(function(result) {
         
         if (errores.length > 0) {
             const errorPromedio = errores.reduce((a, b) => a + b, 0) / errores.length;
-            
-            // Si el error es mayor al 15%, es una lectura borrosa o falsa.
-            if (errorPromedio > 0.15) {
-                console.log("❌ Lectura borrosa descartada:", result.codeResult.code);
-                return; 
-            }
+            if (errorPromedio > 0.15) return; 
         }
     }
 
-    // 2. FILTRO DE LONGITUD (Opcional: EAN-13 tiene 13 dígitos, UPC tiene 12)
-    if (result.codeResult.code.length < 8 || result.codeResult.code.length > 14) {
-        return; 
-    }
-
     const codigo = result.codeResult.code;
-    console.log("✅ Código válido detectado:", codigo);
-    
-    // Detener cámara y enviar
-    stopScanner();
+    // ¡Ya NO apagamos la cámara aquí! Solo enviamos a Supabase y bloqueamos el escáner.
     enviarCodigo(codigo);
 });
