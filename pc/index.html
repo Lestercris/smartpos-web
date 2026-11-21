@@ -14,8 +14,7 @@
     <header class="app-header">
         <h1>SmartPOS</h1>
         <div class="header-actions">
-            <!-- NUEVO BOTÓN DE CAJA -->
-            <button id="btnCaja" class="btn btn-success" onclick="abrirModalCaja()">🟢 Abrir Caja</button>
+            <button id="btnCaja" class="btn btn-success" onclick="abrirModalAbrirCaja()">🟢 Abrir Caja</button>
             <button class="btn btn-primary" onclick="abrirAdmin()">⚙️ Administración</button>
             <div id="connection-status" class="status disconnected">Desconectado</div>
         </div>
@@ -59,11 +58,55 @@
 
                 <div class="tabs-nav">
                     <button class="tab-btn active" data-tab="tab-productos" onclick="cambiarTab('tab-productos')">Productos</button>
+                    <button class="tab-btn" data-tab="tab-comprobantes" onclick="cambiarTab('tab-comprobantes')">Comprobantes</button>
                     <button class="tab-btn" data-tab="tab-clientes" onclick="cambiarTab('tab-clientes')">Clientes</button>
                     <button class="tab-btn" data-tab="tab-proveedores" onclick="cambiarTab('tab-proveedores')">Proveedores</button>
                     <button class="tab-btn" data-tab="tab-ajustes" onclick="cambiarTab('tab-ajustes')">Ajustes</button>
                 </div>
                 
+                <!-- ================= PESTAÑA: COMPROBANTES ================= -->
+                <div id="tab-comprobantes" class="tab-content">
+                    <div class="search-box mb-20" style="max-width: 600px;">
+                        <label style="font-size: 13px; font-weight: bold; color: #475569; display: block; margin-bottom: 5px;">Escanee el código de barras del ticket o escriba el ID</label>
+                        <div class="input-row">
+                            <input type="text" id="searchTicket" placeholder="Ej: T-000007" onkeydown="if(event.key === 'Enter') buscarComprobante()">
+                            <button class="btn btn-primary" onclick="buscarComprobante()">🔍 Buscar</button>
+                        </div>
+                    </div>
+
+                    <div id="ticketResultado" class="hidden">
+                        <div class="card-inner mb-20">
+                            <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 15px;">
+                                <div>
+                                    <h3 id="tk-titulo" style="margin-bottom: 5px;">Ticket #000000</h3>
+                                    <p style="font-size: 13px; color: #64748b;" id="tk-info"></p>
+                                </div>
+                                <div id="tk-estado"></div>
+                            </div>
+                            
+                            <div class="table-responsive">
+                                <table class="data-table" style="min-width: auto;">
+                                    <thead>
+                                        <tr>
+                                            <th>Producto</th>
+                                            <th>P. Unit</th>
+                                            <th>Cant. Vendida</th>
+                                            <th>Cant. Devuelta</th>
+                                            <th>Disponible</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="tk-detalles-body"></tbody>
+                                </table>
+                            </div>
+
+                            <div class="modal-actions" style="justify-content: flex-start; margin-top: 20px;">
+                                <button class="btn btn-warning" id="btnDevolver" onclick="abrirModalDevolucion()">↩️ Devolver Productos</button>
+                                <button class="btn btn-danger" id="btnAnular" onclick="anularVentaCompleta()">🚫 Anular Venta Completa</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
                 <!-- ================= PESTAÑA: PRODUCTOS ================= -->
                 <div id="tab-productos" class="tab-content active">
                     <div class="admin-actions mb-20">
@@ -95,20 +138,8 @@
                     </div>
 
                     <div class="table-toolbar">
-                        <div class="search-box">
-                            <input type="text" id="searchProduct" placeholder="🔍 Buscar por código, nombre o categoría..." oninput="filtrarProductos()">
-                        </div>
-                        <div class="pagination-controls">
-                            <label>Mostrar:</label>
-                            <select id="itemsPerPage" onchange="cambiarItemsPorPagina(this.value)">
-                                <option value="5">5</option>
-                                <option value="10" selected>10</option>
-                                <option value="25">25</option>
-                                <option value="50">50</option>
-                                <option value="100">100</option>
-                                <option value="200">200</option>
-                            </select>
-                        </div>
+                        <div class="search-box"><input type="text" id="searchProduct" placeholder="🔍 Buscar por código, nombre o categoría..." oninput="filtrarProductos()"></div>
+                        <div class="pagination-controls"><label>Mostrar:</label><select id="itemsPerPage" onchange="cambiarItemsPorPagina(this.value)"><option value="5">5</option><option value="10" selected>10</option><option value="25">25</option><option value="50">50</option><option value="100">100</option></select></div>
                     </div>
 
                     <div class="table-responsive">
@@ -192,21 +223,35 @@
         <div class="modal-overlay hidden" id="modalCaja">
             <div class="modal-box">
                 <h2 id="cajaModalTitle">Abrir Caja</h2>
-                <div class="form-field mb-20">
-                    <label id="cajaModalLabel">Monto Inicial (Vuelto)</label>
-                    <input type="number" id="cajaMonto" step="0.01" placeholder="0.00">
-                </div>
-                <div class="form-field mb-20">
-                    <label>Notas (opcional)</label>
-                    <input type="text" id="cajaNotas" placeholder="Ej: Turno mañana">
-                </div>
+                <div class="form-field mb-20"><label id="cajaModalLabel">Monto Inicial (Vuelto)</label><input type="number" id="cajaMonto" step="0.01" placeholder="0.00"></div>
+                <div class="form-field mb-20"><label>Notas (opcional)</label><input type="text" id="cajaNotas" placeholder="Ej: Turno mañana"></div>
                 <div id="cajaResultado" class="hidden mb-20"></div>
                 <div class="modal-actions">
                     <button class="btn btn-secondary" onclick="cerrarModalCaja()">Cancelar</button>
-                    <button class="btn btn-primary" id="btnConfirmarCaja" onclick="confirmarCaja()">Confirmar</button>
+                    <button class="btn btn-primary" id="btnConfirmarCaja" onclick="confirmarAbrirCaja()">Confirmar</button>
                 </div>
             </div>
         </div>
+
+        <!-- MODAL DE DEVOLUCIÓN -->
+        <div class="modal-overlay hidden" id="modalDevolucion">
+            <div class="modal-box" style="max-width: 600px;">
+                <h2>Devolver Productos</h2>
+                <p style="font-size: 13px; color: #64748b; margin-bottom: 15px;">Indica la cantidad a devolver. El stock se actualizará automáticamente.</p>
+                <div class="table-responsive">
+                    <table class="data-table" style="min-width: auto;">
+                        <thead><tr><th>Producto</th><th>Disponible</th><th>Cant. a Devolver</th></tr></thead>
+                        <tbody id="dev-form-body"></tbody>
+                    </table>
+                </div>
+                <div class="form-field mt-20"><label>Motivo (opcional)</label><input type="text" id="dev-motivo" placeholder="Ej: Producto en mal estado"></div>
+                <div class="modal-actions">
+                    <button class="btn btn-secondary" onclick="cerrarModalDevolucion()">Cancelar</button>
+                    <button class="btn btn-warning" onclick="procesarDevolucion()">Confirmar Devolución</button>
+                </div>
+            </div>
+        </div>
+
     </main>
 
     <script src="js/db.js"></script>

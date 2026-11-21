@@ -169,3 +169,26 @@ button:active { transform: scale(0.95); }
     z-index: 20;
     text-shadow: 0 1px 3px rgba(0,0,0,0.8);
 }
+/* ================= MÓDULO DE COMPROBANTES ================= */
+#tab-comprobantes .card-inner {
+    background: white;
+    border: 1px solid #e2e8f0;
+    border-radius: 12px;
+    padding: 20px;
+}
+#tk-titulo {
+    font-size: 1.2rem;
+    color: #0f172a;
+    margin-bottom: 5px;
+}
+.badge-estado {
+    padding: 6px 12px;
+    border-radius: 6px;
+    font-size: 12px;
+    font-weight: 700;
+    text-transform: uppercase;
+}
+.badge-emitida { background: #dcfce7; color: #166534; }
+.badge-anulada { background: #fee2e2; color: #991b1b; }
+.badge-devuelta { background: #fef3c7; color: #92400e; }
+.mt-20 { margin-top: 20px; }

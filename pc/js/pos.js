@@ -518,4 +518,183 @@ document.addEventListener('DOMContentLoaded', () => {
         document.body.appendChild(toast); 
         setTimeout(() => { toast.classList.add('fade-out'); setTimeout(() => toast.remove(), 300); }, 3000);
     }
+
+
+        // ==================== MÓDULO DE COMPROBANTES Y DEVOLUCIONES ====================
+    let comprobanteActual = null; // Guarda la venta cargada actualmente
+
+    window.buscarComprobante = async function() {
+        const query = document.getElementById('searchTicket').value.trim().toUpperCase();
+        if (!query) return mostrarNotificacion('Escribe o escanea un código de ticket', 'error');
+
+        // Limpiamos el prefijo 'T-' si viene del código de barras
+        const idLimpio = query.replace(/[^0-9]/g, ''); 
+        if (!idLimpio) return mostrarNotificacion('Formato de ticket inválido', 'error');
+
+        try {
+            mostrarNotificacion('Buscando ticket...', 'success');
+            
+            // 1. Buscar la venta
+            const { data: venta, error: ventaError } = await supabaseClient
+                .from('ventas')
+                .select('*')
+                .eq('id', parseInt(idLimpio))
+                .single();
+
+            if (ventaError || !venta) throw new Error('Ticket no encontrado');
+
+            // 2. Buscar los detalles de la venta
+            const { data: detalles, error: detError } = await supabaseClient
+                .from('venta_detalles')
+                .select(`*, productos (nombre)`)
+                .eq('venta_id', venta.id);
+
+            if (detError) throw detError;
+
+            // 3. Buscar las devoluciones previas para calcular cuánto queda disponible
+            const { data: devoluciones } = await supabaseClient
+                .from('devolucion_detalles')
+                .select(`producto_id, cantidad, devoluciones!inner(venta_id)`)
+                .eq('devoluciones.venta_id', venta.id);
+
+            const devueltosMap = {};
+            if (devoluciones) {
+                devoluciones.forEach(d => {
+                    devueltosMap[d.producto_id] = (devueltosMap[d.producto_id] || 0) + d.cantidad;
+                });
+            }
+
+            // Agregar la cantidad devuelta a cada detalle
+            detalles.forEach(det => {
+                det.cantidad_devuelta = devueltosMap[det.producto_id] || 0;
+                det.cantidad_disponible = det.cantidad - det.cantidad_devuelta;
+            });
+
+            comprobanteActual = { ...venta, detalles };
+            renderizarComprobante();
+
+        } catch (err) {
+            document.getElementById('ticketResultado').classList.add('hidden');
+            mostrarNotificacion(err.message, 'error');
+        }
+    };
+
+    function renderizarComprobante() {
+        const v = comprobanteActual;
+        document.getElementById('ticketResultado').classList.remove('hidden');
+        document.getElementById('tk-titulo').textContent = 'Ticket #' + String(v.id).padStart(6, '0');
+        document.getElementById('tk-info').innerHTML = `
+            <b>Fecha:</b> ${new Date(v.created_at).toLocaleString()}<br>
+            <b>Usuario:</b> ${v.usuario} | <b>Total:</b> $${Number(v.total).toFixed(2)}
+        `;
+
+        // Estado del ticket
+        const estadoDiv = document.getElementById('tk-estado');
+        if (v.estado === 'ANULADA') {
+            estadoDiv.innerHTML = '<span class="badge-estado badge-anulada">ANULADA</span>';
+            document.getElementById('btnDevolver').style.display = 'none';
+            document.getElementById('btnAnular').style.display = 'none';
+        } else {
+            estadoDiv.innerHTML = '<span class="badge-estado badge-emitida">EMITIDA</span>';
+            document.getElementById('btnAnular').style.display = 'inline-flex';
+            
+            // Si ya se devolvió todo, ocultamos el botón de devolver
+            const hayDisponibles = v.detalles.some(d => d.cantidad_disponible > 0);
+            document.getElementById('btnDevolver').style.display = hayDisponibles ? 'inline-flex' : 'none';
+        }
+
+        // Tabla de detalles
+        const tbody = document.getElementById('tk-detalles-body');
+        tbody.innerHTML = v.detalles.map(d => `
+            <tr>
+                <td>${d.productos ? d.productos.nombre : 'Producto Eliminado'}</td>
+                <td>$${Number(d.precio_unitario).toFixed(2)}</td>
+                <td>${d.cantidad}</td>
+                <td style="color: #b45309;">${d.cantidad_devuelta}</td>
+                <td><b style="color: ${d.cantidad_disponible > 0 ? '#16a34a' : '#dc2626'}">${d.cantidad_disponible}</b></td>
+            </tr>
+        `).join('');
+    }
+
+    // --- MODAL DE DEVOLUCIÓN ---
+    window.abrirModalDevolucion = function() {
+        if (!comprobanteActual) return;
+        
+        const disponibles = comprobanteActual.detalles.filter(d => d.cantidad_disponible > 0);
+        if (disponibles.length === 0) return mostrarNotificacion('No hay productos disponibles para devolver', 'error');
+
+        document.getElementById('modalDevolucion').classList.remove('hidden');
+        document.getElementById('dev-motivo').value = '';
+
+        const tbody = document.getElementById('dev-form-body');
+        tbody.innerHTML = disponibles.map(d => `
+            <tr>
+                <td>${d.productos ? d.productos.nombre : 'Prod'}</td>
+                <td>${d.cantidad_disponible}</td>
+                <td><input type="number" class="input-cantidad dev-qty" data-id="${d.producto_id}" min="0" max="${d.cantidad_disponible}" value="0"></td>
+            </tr>
+        `).join('');
+    };
+
+    window.cerrarModalDevolucion = function() {
+        document.getElementById('modalDevolucion').classList.add('hidden');
+    };
+
+    window.procesarDevolucion = async function() {
+        if (!comprobanteActual) return;
+
+        const inputs = document.querySelectorAll('.dev-qty');
+        const items = [];
+        
+        inputs.forEach(input => {
+            const cant = parseInt(input.value);
+            if (cant > 0) {
+                items.push({ id: parseInt(input.dataset.id), cantidad: cant });
+            }
+        });
+
+        if (items.length === 0) return mostrarNotificacion('Indica al menos una cantidad a devolver', 'error');
+        
+        const motivo = document.getElementById('dev-motivo').value.trim();
+
+        try {
+            mostrarNotificacion('Procesando devolución...', 'success');
+            const { error } = await supabaseClient.rpc('procesar_devolucion', {
+                p_venta_id: comprobanteActual.id,
+                p_usuario: 'Vendedor Demo',
+                p_motivo: motivo,
+                p_items: items
+            });
+            if (error) throw error;
+
+            mostrarNotificacion('Devolución procesada con éxito', 'success');
+            cerrarModalDevolucion();
+            buscarComprobante(); // Recargar la vista
+            cargarProductosAdmin(); // Recargar stock en admin
+        } catch (err) {
+            mostrarNotificacion('Error: ' + err.message, 'error');
+        }
+    };
+
+    // --- ANULAR VENTA COMPLETA ---
+    window.anularVentaCompleta = async function() {
+        if (!comprobanteActual) return;
+        if (!confirm('¿Estás seguro de anular esta venta? Se devolverá todo el stock al inventario.')) return;
+
+        try {
+            mostrarNotificacion('Anulando venta...', 'success');
+            const { error } = await supabaseClient.rpc('anular_venta_completa', {
+                p_venta_id: comprobanteActual.id,
+                p_usuario: 'Vendedor Demo',
+                p_motivo: 'Anulación manual desde administración'
+            });
+            if (error) throw error;
+
+            mostrarNotificacion('Venta anulada correctamente', 'success');
+            buscarComprobante();
+            cargarProductosAdmin();
+        } catch (err) {
+            mostrarNotificacion('Error: ' + err.message, 'error');
+        }
+    };
 });
