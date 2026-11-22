@@ -39,6 +39,34 @@ document.addEventListener('DOMContentLoaded', () => {
         } catch (err) {
             /* sin conexión: se usa lo que ya estuviera guardado */
         }
+
+        try {
+            const { data: subcategorias } = await supabaseClient.from('subcategorias').select('*').order('nombre');
+            if (subcategorias) await Offline.guardarDatos('subcategorias', subcategorias);
+        } catch (err) {
+            /* sin conexión */
+        }
+    }
+
+    // Subcategorías de una categoría (de la red o de la copia local)
+    async function subcategoriasDe(categoriaId) {
+        if (!categoriaId) return [];
+
+        try {
+            const { data, error } = await supabaseClient
+                .from('subcategorias')
+                .select('*')
+                .eq('categoria_id', categoriaId)
+                .order('nombre');
+
+            if (error) throw error;
+            return data || [];
+        } catch (err) {
+            if (typeof Offline === 'undefined') return [];
+
+            const guardadas = await Offline.obtenerDatos('subcategorias');
+            return (guardadas || []).filter(sub => String(sub.categoria_id) === String(categoriaId));
+        }
     }
 
     // Datos del negocio para el ticket (se guardan en smartpos_config)
@@ -546,8 +574,8 @@ document.addEventListener('DOMContentLoaded', () => {
             const selSubCat = document.getElementById('newSubcategoria');
             selSubCat.innerHTML = '<option value="">Seleccione...</option>';
             if (!catId) return;
-            const { data } = await supabaseClient.from('subcategorias').select('*').eq('categoria_id', catId);
-            if (data) selSubCat.innerHTML += data.map(s => `<option value="${s.id}">${s.nombre}</option>`).join('');
+            const subs = await subcategoriasDe(catId);
+            selSubCat.innerHTML += subs.map(s => `<option value="${s.id}">${s.nombre}</option>`).join('');
         });
     }
 
@@ -1298,13 +1326,9 @@ document.addEventListener('DOMContentLoaded', () => {
         sel.innerHTML = '<option value="">—</option>';
         if (!categoriaId) return;
 
-        const { data } = await supabaseClient
-            .from('subcategorias')
-            .select('*')
-            .eq('categoria_id', categoriaId)
-            .order('nombre');
+        const subs = await subcategoriasDe(categoriaId);
 
-        (data || []).forEach(sub => {
+        subs.forEach(sub => {
             const opt = document.createElement('option');
             opt.value = sub.id;
             opt.textContent = sub.nombre;
