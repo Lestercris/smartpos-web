@@ -9,8 +9,8 @@
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://cdn.sheetjs.com/xlsx-0.20.0/package/dist/xlsx.full.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.6/dist/JsBarcode.all.min.js"></script>
-    <link rel="stylesheet" href="css/styles.css?v=20261122z">
-    <link rel="stylesheet" href="modulos/ticket/ticket.css?v=20261122z">
+    <link rel="stylesheet" href="css/styles.css?v=20261122aa">
+    <link rel="stylesheet" href="modulos/ticket/ticket.css?v=20261122aa">
 </head>
 <body>
     <header class="app-header">
@@ -162,7 +162,7 @@
                     <p class="ventas-periodo" id="ventasPeriodo"></p>
 
                     <div class="table-responsive">
-                        <table class="data-table" style="min-width: 720px;">
+                        <table class="data-table tabla-acciones" style="min-width: 720px;">
                             <thead>
                                 <tr>
                                     <th>Nº</th>
@@ -274,7 +274,7 @@
                     </div>
 
                     <div class="table-responsive">
-                        <table class="data-table">
+                        <table class="data-table tabla-acciones">
                             <thead><tr><th>Imagen</th><th>Código</th><th>Producto</th><th>Categoría</th><th>Medida</th><th>Mínimo</th><th>En stock</th><th>Compra</th><th>Venta</th><th>IVA</th><th>Ganancia</th><th>%</th><th>Proveedor</th><th>Acciones</th></tr></thead>
                             <tbody id="productTableBody"></tbody>
                         </table>
@@ -300,7 +300,12 @@
                         <div class="form-field"><label>Dirección</label><input type="text" id="cliDireccion" placeholder="Dirección"></div>
                         <div class="form-field btn-field"><button class="btn btn-primary" onclick="guardarCliente()">+ Añadir</button></div>
                     </div>
-                    <table class="data-table"><thead><tr><th>Doc</th><th>Nombre</th><th>Teléfono</th><th>Dirección</th><th></th></tr></thead><tbody id="clientesTableBody"></tbody></table>
+                    <div class="table-responsive">
+                        <table class="data-table tabla-acciones">
+                            <thead><tr><th>Doc</th><th>Nombre</th><th>Teléfono</th><th>Dirección</th><th></th></tr></thead>
+                            <tbody id="clientesTableBody"></tbody>
+                        </table>
+                    </div>
                 </div>
 
                 <!-- ================= PESTAÑA: PROVEEDORES ================= -->
@@ -313,7 +318,12 @@
                         <div class="form-field"><label>Contacto</label><input type="text" id="provContacto" placeholder="Contacto"></div>
                         <div class="form-field btn-field"><button class="btn btn-primary" onclick="guardarProveedor()">+ Añadir</button></div>
                     </div>
-                    <table class="data-table"><thead><tr><th>Doc</th><th>Nombre</th><th>Contacto</th><th>Teléfono</th><th></th></tr></thead><tbody id="proveedoresTableBody"></tbody></table>
+                    <div class="table-responsive">
+                        <table class="data-table tabla-acciones">
+                            <thead><tr><th>Doc</th><th>Nombre</th><th>Contacto</th><th>Teléfono</th><th></th></tr></thead>
+                            <tbody id="proveedoresTableBody"></tbody>
+                        </table>
+                    </div>
                 </div>
 
                 <!-- ================= PESTAÑA: AJUSTES ================= -->
@@ -568,11 +578,11 @@
 
     </main>
 
-    <script src="js/db.js?v=20261122z"></script>
-    <script src="js/offline.js?v=20261122z"></script>
-    <script src="js/pos.js?v=20261122z"></script>
-    <script src="js/realtime.js?v=20261122z"></script>
-    <script src="modulos/ticket/ticket.js?v=20261122z"></script>
-    <script src="js/ventas.js?v=20261122z"></script>
+    <script src="js/db.js?v=20261122aa"></script>
+    <script src="js/offline.js?v=20261122aa"></script>
+    <script src="js/pos.js?v=20261122aa"></script>
+    <script src="js/realtime.js?v=20261122aa"></script>
+    <script src="modulos/ticket/ticket.js?v=20261122aa"></script>
+    <script src="js/ventas.js?v=20261122aa"></script>
 </body>
 </html>

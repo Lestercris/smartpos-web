@@ -1,7 +1,7 @@
 // SmartPOS · Service Worker (modo offline)
 // Cambia CACHE cuando cambies archivos del shell para forzar la actualización.
 
-const CACHE = 'smartpos-20261122z';
+const CACHE = 'smartpos-20261122aa';
 
 const SHELL = [
     './',

@@ -881,3 +881,18 @@ main { padding: 24px; max-width: 1600px; margin: 0 auto; }
     .pagination-buttons { flex-direction: column; width: 100%; }
     .pagination-buttons .btn { width: 100%; }
 }
+/* Columna de acciones siempre visible en móvil */
+@media (max-width: 768px) {
+    .tabla-acciones th:last-child,
+    .tabla-acciones td:last-child {
+        position: sticky;
+        right: 0;
+        background: #ffffff;
+        box-shadow: -8px 0 10px -8px rgba(15, 23, 42, 0.25);
+        z-index: 2;
+        white-space: nowrap;
+    }
+    .tabla-acciones thead th:last-child { background: #f9fafb; }
+    .tabla-acciones tbody tr:hover td:last-child { background: #f9fafb; }
+    .tabla-acciones td:last-child .btn-icon { margin-right: 4px; }
+}
