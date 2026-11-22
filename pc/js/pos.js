@@ -9,6 +9,7 @@ document.addEventListener('DOMContentLoaded', () => {
     let todosLosProductos = [], productosFiltrados = [], paginaActual = 1, itemsPorPagina = 10;
     let mostrarOcultos = false;
     let listaPromociones = [];
+    let promocionEditando = null;
     let listaClientesVenta = [];
 
     const inputCode = document.getElementById('posCode');
@@ -252,6 +253,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 <td>${fechaCorta(promo.fecha_fin)}</td>
                 <td>${estado}</td>
                 <td class="td-acciones">
+                    <button class="btn-icon btn-ver" title="Editar" onclick="editarPromo(${promo.id})">✏️</button>
                     <button class="btn-icon btn-ver" title="${promo.activa === false ? 'Activar' : 'Pausar'}" onclick="alternarPromo(${promo.id})">${promo.activa === false ? '▶️' : '⏸️'}</button>
                     <button class="btn-icon btn-danger" title="Eliminar" onclick="eliminarPromo(${promo.id})">🗑️</button>
                 </td>
@@ -275,6 +277,58 @@ document.addEventListener('DOMContentLoaded', () => {
         const esNxm = tipo === 'NXM';
         document.getElementById('promoDescuentoCampo').classList.toggle('hidden', esNxm);
         document.getElementById('promoNxmCampo').classList.toggle('hidden', !esNxm);
+    };
+
+    window.editarPromo = function (id) {
+        const promo = listaPromociones.find(p => p.id === id);
+        if (!promo) return mostrarNotificacion('No se encontró la promoción', 'error');
+
+        promocionEditando = promo;
+        const tipo = promo.tipo || 'PORCENTAJE';
+
+        document.getElementById('promoFormTitulo').textContent = 'Editar promoción';
+        document.getElementById('promoNombre').value = promo.nombre || '';
+        document.getElementById('promoProducto').value = promo.producto_id || '';
+        document.getElementById('promoTipo').value = tipo;
+        cambiarTipoPromo(tipo);
+        document.getElementById('promoDescuento').value = tipo === 'NXM' ? '' : Number(promo.descuento);
+        document.getElementById('promoLleva').value = promo.lleva || '';
+        document.getElementById('promoPaga').value = promo.paga || '';
+        document.getElementById('promoDesde').value = promo.fecha_inicio || '';
+        document.getElementById('promoHasta').value = promo.fecha_fin || '';
+
+        document.getElementById('btnGuardarPromo').textContent = 'Guardar cambios';
+        document.getElementById('btnCancelarPromo').classList.remove('hidden');
+        document.getElementById('promoFormTitulo').scrollIntoView({ behavior: 'smooth', block: 'start' });
+    };
+
+    function resetFormPromo() {
+        promocionEditando = null;
+
+        ['promoNombre', 'promoDescuento', 'promoDesde', 'promoHasta', 'promoLleva', 'promoPaga'].forEach(id => {
+            const campo = document.getElementById(id);
+            if (campo) campo.value = '';
+        });
+
+        const producto = document.getElementById('promoProducto');
+        if (producto) producto.value = '';
+
+        const tipo = document.getElementById('promoTipo');
+        if (tipo) tipo.value = 'PORCENTAJE';
+        cambiarTipoPromo('PORCENTAJE');
+
+        const titulo = document.getElementById('promoFormTitulo');
+        if (titulo) titulo.textContent = 'Nueva promoción';
+
+        const boton = document.getElementById('btnGuardarPromo');
+        if (boton) boton.textContent = '+ Añadir promoción';
+
+        const cancelar = document.getElementById('btnCancelarPromo');
+        if (cancelar) cancelar.classList.add('hidden');
+    }
+
+    window.cancelarEdicionPromo = function () {
+        resetFormPromo();
     };
 
     window.guardarPromo = async function () {
@@ -307,22 +361,20 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         }
 
-        const { error } = await supabaseClient.from('promociones').insert([{
-            nombre, producto_id, descuento, fecha_inicio, fecha_fin, activa: true, tipo, lleva, paga
-        }]);
+        const datos = { nombre, producto_id, descuento, fecha_inicio, fecha_fin, tipo, lleva, paga };
+        const editando = !!promocionEditando;
+
+        let error;
+        if (editando) {
+            ({ error } = await supabaseClient.from('promociones').update(datos).eq('id', promocionEditando.id));
+        } else {
+            ({ error } = await supabaseClient.from('promociones').insert([{ ...datos, activa: true }]));
+        }
 
         if (error) return mostrarNotificacion('No se pudo guardar. ' + mensajeError(error), 'error');
 
-        ['promoNombre', 'promoDescuento', 'promoDesde', 'promoHasta', 'promoLleva', 'promoPaga'].forEach(id => {
-            const campo = document.getElementById(id);
-            if (campo) campo.value = '';
-        });
-        const select = document.getElementById('promoProducto');
-        if (select) select.value = '';
-        const tipoSelect = document.getElementById('promoTipo');
-        if (tipoSelect) { tipoSelect.value = 'PORCENTAJE'; cambiarTipoPromo('PORCENTAJE'); }
-
-        mostrarNotificacion('Promoción creada', 'success');
+        resetFormPromo();
+        mostrarNotificacion(editando ? 'Promoción actualizada' : 'Promoción creada', 'success');
         await cargarPromos();
         renderCarrito();
     };

@@ -191,11 +191,11 @@
                 <!-- ================= PESTAÑA: PROMOCIONES ================= -->
                 <div id="tab-promos" class="tab-content">
                     <div class="card-inner mb-20">
-                        <h3>Nueva promoción</h3>
+                        <h3 id="promoFormTitulo">Nueva promoción</h3>
                         <div class="form-grid">
                             <div class="form-field"><label>Nombre</label><input type="text" id="promoNombre" placeholder="Ej: Oferta de fin de semana"></div>
                             <div class="form-field"><label>Producto</label><select id="promoProducto"><option value="">Todos los productos</option></select></div>
-                            <div class="form-field"><label>Tipo</label><select id="promoTipo" onchange="cambiarTipoPromo(this.value)"><option value="PORCENTAJE">Descuento %</option><option value="NXM">Lleva N paga M</option></select></div>
+                            <div class="form-field"><label>Tipo</label><select id="promoTipo" onchange="cambiarTipoPromo(this.value)"><option value="PORCENTAJE" selected>Descuento %</option><option value="NXM">Lleva N paga M</option></select></div>
                             <div class="form-field" id="promoDescuentoCampo"><label>Descuento (%)</label><input type="number" id="promoDescuento" min="1" max="100" step="0.01" placeholder="20"></div>
                             <div class="form-field hidden" id="promoNxmCampo">
                                 <label>Lleva / Paga</label>
@@ -206,7 +206,10 @@
                             </div>
                             <div class="form-field"><label>Desde (opcional)</label><input type="date" id="promoDesde"></div>
                             <div class="form-field"><label>Hasta (opcional)</label><input type="date" id="promoHasta"></div>
-                            <div class="form-field btn-field"><button class="btn btn-primary" onclick="guardarPromo()">+ Añadir promoción</button></div>
+                            <div class="form-field btn-field" style="flex-direction: row; gap: 8px;">
+                                <button class="btn btn-primary" id="btnGuardarPromo" style="width: auto; flex: 1;" onclick="guardarPromo()">+ Añadir promoción</button>
+                                <button class="btn btn-secondary hidden" id="btnCancelarPromo" style="width: auto;" onclick="cancelarEdicionPromo()">Cancelar</button>
+                            </div>
                         </div>
                         <p class="iva-ayuda">El POS aplica la mejor promoción vigente al añadir el producto. El precio rebajado se guarda en la venta y aparece en el ticket.</p>
                     </div>
