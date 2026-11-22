@@ -97,21 +97,32 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!turnoActual) return;
         
         let respuesta = await supabaseClient.from('ventas')
-            .select('total, estado')
+            .select('total, estado, metodo_pago')
             .gte('created_at', turnoActual.fecha_apertura);
 
-        // Compatibilidad: si la base no tiene la columna "estado", se consulta solo el total
+        // Compatibilidad si todavía no existen las columnas nuevas
+        if (respuesta.error) {
+            respuesta = await supabaseClient.from('ventas')
+                .select('total, estado')
+                .gte('created_at', turnoActual.fecha_apertura);
+        }
         if (respuesta.error) {
             respuesta = await supabaseClient.from('ventas')
                 .select('total')
                 .gte('created_at', turnoActual.fecha_apertura);
         }
 
-        // Solo sumamos las ventas válidas: las anuladas no entran en el arqueo
-        const totalVentas = (respuesta.data || [])
-            .filter(v => String(v.estado || '').toUpperCase() !== 'ANULADA')
-            .reduce((sum, v) => sum + Number(v.total || 0), 0);
-        const montoSistema = Number(turnoActual.monto_inicial) + totalVentas;
+        // Solo sumamos las ventas válidas y, para el efectivo, las cobradas en efectivo
+        const ventasValidas = (respuesta.data || [])
+            .filter(v => String(v.estado || '').toUpperCase() !== 'ANULADA');
+        const esEfectivo = v => !v.metodo_pago || v.metodo_pago === 'EFECTIVO';
+
+        const totalEfectivo = ventasValidas.filter(esEfectivo)
+            .reduce((suma, v) => suma + Number(v.total || 0), 0);
+        const totalOtros = ventasValidas.filter(v => !esEfectivo(v))
+            .reduce((suma, v) => suma + Number(v.total || 0), 0);
+
+        const montoSistema = Number(turnoActual.monto_inicial) + totalEfectivo;
 
         document.getElementById('modalCaja').classList.remove('hidden');
         document.getElementById('cajaModalTitle').textContent = 'Cerrar Caja';
@@ -122,8 +133,9 @@ document.addEventListener('DOMContentLoaded', () => {
         const resDiv = document.getElementById('cajaResultado');
         resDiv.classList.remove('hidden');
         resDiv.innerHTML = `<p><b>Dinero inicial:</b> $${Number(turnoActual.monto_inicial).toFixed(2)}</p>
-                            <p><b>Ventas:</b> $${totalVentas.toFixed(2)}</p>
-                            <p style="border-top:1px solid #ccc; padding-top:5px; margin-top:5px;"><b>Debería haber:</b> $${montoSistema.toFixed(2)}</p>`;
+                            <p><b>Ventas en efectivo:</b> $${totalEfectivo.toFixed(2)}</p>
+                            ${totalOtros > 0 ? `<p><b>Tarjeta / transferencia:</b> $${totalOtros.toFixed(2)}</p>` : ''}
+                            <p style="border-top:1px solid #ccc; padding-top:5px; margin-top:5px;"><b>Debería haber en caja:</b> $${montoSistema.toFixed(2)}</p>`;
                             
         document.getElementById('btnConfirmarCaja').onclick = () => confirmarCerrarCaja(montoSistema);
     };
@@ -241,31 +253,137 @@ document.addEventListener('DOMContentLoaded', () => {
     window.actualizarCantidad = function(index, val) { let cant = parseInt(val) || 1; if (cant < 1) cant = 1; carrito[index].cantidad = cant; renderCarrito(); };
     window.eliminarItem = function(index) { carrito.splice(index, 1); renderCarrito(); };
 
-    window.cobrar = async function() {
+    // ==================== COBRO: FORMA DE PAGO Y VUELTO ====================
+    let cobroPendiente = null;
+    let metodoPago = 'EFECTIVO';
+
+    window.cobrar = function() {
         if (!turnoActual) return mostrarNotificacion('Debes abrir la caja primero', 'error');
         if (carrito.length === 0) return mostrarNotificacion('El carrito está vacío', 'error');
-        
+
         const carritoCopia = carrito.map(item => ({ ...item, total: item.precio * item.cantidad }));
         let sGrav = 0, sExento = 0;
         carritoCopia.forEach(item => { if (item.aplica_iva) sGrav += item.total; else sExento += item.total; });
         const subtotal = sGrav + sExento, iva = sGrav * IVA_RATE, total = subtotal + iva;
-        
+
+        cobroPendiente = { items: carritoCopia, subtotal, iva, total };
+
+        document.getElementById('cobroTotal').textContent = '$' + total.toFixed(2);
+        document.getElementById('cobroRecibido').value = '';
+        window.elegirMetodoPago('EFECTIVO');
+        document.getElementById('modalCobro').classList.remove('hidden');
+
+        const campo = document.getElementById('cobroRecibido');
+        if (campo.focus) campo.focus();
+    };
+
+    window.cerrarModalCobro = function () {
+        document.getElementById('modalCobro').classList.add('hidden');
+        cobroPendiente = null;
+    };
+
+    window.elegirMetodoPago = function (metodo) {
+        metodoPago = metodo;
+
+        document.getElementById('pagoEfectivo').classList.toggle('activo', metodo === 'EFECTIVO');
+        document.getElementById('pagoTarjeta').classList.toggle('activo', metodo === 'TARJETA');
+        document.getElementById('pagoTransferencia').classList.toggle('activo', metodo === 'TRANSFERENCIA');
+        document.getElementById('cobroEfectivoCampos').classList.toggle('hidden', metodo !== 'EFECTIVO');
+
+        window.actualizarVuelto();
+    };
+
+    window.actualizarVuelto = function () {
+        if (!cobroPendiente) return;
+
+        const total = cobroPendiente.total;
+        const caja = document.getElementById('cobroVuelto');
+        const boton = document.getElementById('btnConfirmarCobro');
+        const recibido = parseFloat(document.getElementById('cobroRecibido').value) || 0;
+
+        if (metodoPago !== 'EFECTIVO') {
+            const nombre = metodoPago === 'TARJETA' ? 'tarjeta' : 'transferencia';
+            caja.className = 'cobro-vuelto cobro-ok';
+            caja.innerHTML = `Pago con ${nombre} por <b>$${total.toFixed(2)}</b>`;
+            boton.disabled = false;
+            return;
+        }
+
+        const vuelto = recibido - total;
+
+        if (recibido <= 0) {
+            caja.className = 'cobro-vuelto';
+            caja.innerHTML = `Total a cobrar: <b>$${total.toFixed(2)}</b>`;
+            boton.disabled = true;
+        } else if (vuelto < 0) {
+            caja.className = 'cobro-vuelto cobro-error';
+            caja.innerHTML = `Faltan <b>$${Math.abs(vuelto).toFixed(2)}</b>`;
+            boton.disabled = true;
+        } else {
+            caja.className = 'cobro-vuelto cobro-ok';
+            caja.innerHTML = `Vuelto: <b>$${vuelto.toFixed(2)}</b>`;
+            boton.disabled = false;
+        }
+    };
+
+    window.confirmarCobro = async function () {
+        if (!cobroPendiente) return;
+
+        const { items, subtotal, iva, total } = cobroPendiente;
+        let recibido = total;
+        let vuelto = 0;
+
+        if (metodoPago === 'EFECTIVO') {
+            recibido = parseFloat(document.getElementById('cobroRecibido').value) || 0;
+            if (recibido < total) return mostrarNotificacion(`Faltan $${(total - recibido).toFixed(2)}`, 'error');
+            vuelto = recibido - total;
+        }
+
+        const boton = document.getElementById('btnConfirmarCobro');
+
         try {
+            if (boton) boton.disabled = true;
             mostrarNotificacion('Cobrando...', 'success');
-            const { data, error } = await supabaseClient.rpc('realizar_venta', { 
-                p_usuario: 'Vendedor Demo', 
-                p_items: carritoCopia.map(item => ({ id: item.id, cantidad: item.cantidad })) 
+
+            const { data, error } = await supabaseClient.rpc('realizar_venta', {
+                p_usuario: 'Vendedor Demo',
+                p_items: items.map(item => ({ id: item.id, cantidad: item.cantidad }))
             });
             if (error) throw error;
 
+            // Forma de pago: el precio y las líneas ya los guardó realizar_venta
+            const pago = await supabaseClient.rpc('registrar_pago', {
+                p_venta_id: data.venta_id,
+                p_metodo: metodoPago,
+                p_recibido: recibido,
+                p_vuelto: vuelto
+            });
+            if (pago.error) console.warn('No se pudo guardar la forma de pago:', pago.error.message);
+
             mostrarNotificacion(`¡Venta #${data.venta_id}!`, 'success');
-            carrito = []; renderCarrito();
-            
+            carrito = [];
+            renderCarrito();
+            window.cerrarModalCobro();
+
             if (typeof moduloTicket !== 'undefined') {
-                moduloTicket.mostrar({ id: data.venta_id, usuario: 'Vendedor Demo', items: carritoCopia, subtotal, iva, total });
+                moduloTicket.mostrar({
+                    id: data.venta_id,
+                    usuario: 'Vendedor Demo',
+                    items,
+                    subtotal,
+                    iva,
+                    total,
+                    metodo_pago: metodoPago,
+                    monto_recibido: recibido,
+                    vuelto
+                });
             }
             if (!document.getElementById('admin-view').classList.contains('hidden')) cargarProductosAdmin();
-        } catch (err) { mostrarNotificacion('No se pudo cobrar. ' + mensajeError(err), 'error'); }
+        } catch (err) {
+            mostrarNotificacion('No se pudo cobrar. ' + mensajeError(err), 'error');
+        } finally {
+            if (boton) boton.disabled = false;
+        }
     };
 
     // Convierte los errores técnicos en mensajes sencillos para el usuario
@@ -749,9 +867,14 @@ document.addEventListener('DOMContentLoaded', () => {
                 motivo: motivo || null,
                 usuario: 'Vendedor Demo'
             }]);
-            if (errorMovimiento) console.warn('No se pudo guardar el movimiento:', errorMovimiento.message);
 
-            mostrarNotificacion(`Stock: ${stockAnterior} → ${stockNuevo}`, 'success');
+            if (errorMovimiento) {
+                console.warn('No se pudo guardar el movimiento:', errorMovimiento.message);
+                mostrarNotificacion(`Stock: ${stockAnterior} → ${stockNuevo}. No se pudo guardar en el historial.`, 'error');
+            } else {
+                mostrarNotificacion(`Stock: ${stockAnterior} → ${stockNuevo}`, 'success');
+            }
+
             cerrarModalStock();
             cargarProductosAdmin();
         } catch (err) {

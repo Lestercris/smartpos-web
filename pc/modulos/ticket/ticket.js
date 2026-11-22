@@ -58,6 +58,30 @@ const moduloTicket = {
         document.getElementById('tk-iva').textContent = '$' + venta.iva.toFixed(2);
         document.getElementById('tk-total').textContent = '$' + venta.total.toFixed(2);
 
+        // 3b. Forma de pago y vuelto (si la venta los tiene)
+        const filaPago = document.getElementById('tk-pago-row');
+        const filaRecibido = document.getElementById('tk-recibido-row');
+        const filaVuelto = document.getElementById('tk-vuelto-row');
+
+        if (filaPago && venta.metodo_pago) {
+            const nombres = { EFECTIVO: 'Efectivo', TARJETA: 'Tarjeta', TRANSFERENCIA: 'Transferencia' };
+            document.getElementById('tk-pago').textContent = nombres[venta.metodo_pago] || venta.metodo_pago;
+            filaPago.style.display = 'flex';
+
+            const esEfectivo = venta.metodo_pago === 'EFECTIVO' && venta.monto_recibido != null;
+            filaRecibido.style.display = esEfectivo ? 'flex' : 'none';
+            filaVuelto.style.display = esEfectivo ? 'flex' : 'none';
+
+            if (esEfectivo) {
+                document.getElementById('tk-recibido').textContent = '$' + Number(venta.monto_recibido).toFixed(2);
+                document.getElementById('tk-vuelto').textContent = '$' + Number(venta.vuelto || 0).toFixed(2);
+            }
+        } else if (filaPago) {
+            filaPago.style.display = 'none';
+            filaRecibido.style.display = 'none';
+            filaVuelto.style.display = 'none';
+        }
+
         // 4. GENERAR EL CÓDIGO DE BARRAS DEL TICKET
         try {
             const codigoTicket = 'T-' + String(venta.id).padStart(6, '0');

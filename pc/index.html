@@ -7,8 +7,8 @@
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://cdn.sheetjs.com/xlsx-0.20.0/package/dist/xlsx.full.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.6/dist/JsBarcode.all.min.js"></script>
-    <link rel="stylesheet" href="css/styles.css?v=20261122b">
-    <link rel="stylesheet" href="modulos/ticket/ticket.css?v=20261122b">
+    <link rel="stylesheet" href="css/styles.css?v=20261122d">
+    <link rel="stylesheet" href="modulos/ticket/ticket.css?v=20261122d">
 </head>
 <body>
     <header class="app-header">
@@ -166,6 +166,7 @@
                                     <th>Vendedor</th>
                                     <th>Unidades</th>
                                     <th>Total</th>
+                                    <th>Pago</th>
                                     <th>Estado</th>
                                     <th>Acciones</th>
                                 </tr>
@@ -359,6 +360,35 @@
             </div>
         </div>
 
+        <!-- MODAL DE COBRO -->
+        <div class="modal-overlay hidden" id="modalCobro">
+            <div class="modal-box" style="max-width: 460px;">
+                <h2>Cobrar</h2>
+
+                <div class="cobro-total" id="cobroTotal">$0.00</div>
+
+                <div class="cobro-metodos">
+                    <button type="button" class="cobro-metodo activo" id="pagoEfectivo" onclick="elegirMetodoPago('EFECTIVO')">💵 Efectivo</button>
+                    <button type="button" class="cobro-metodo" id="pagoTarjeta" onclick="elegirMetodoPago('TARJETA')">💳 Tarjeta</button>
+                    <button type="button" class="cobro-metodo" id="pagoTransferencia" onclick="elegirMetodoPago('TRANSFERENCIA')">🏦 Transferencia</button>
+                </div>
+
+                <div id="cobroEfectivoCampos">
+                    <div class="form-field">
+                        <label>¿Con cuánto paga?</label>
+                        <input type="number" id="cobroRecibido" step="0.01" placeholder="0.00" oninput="actualizarVuelto()">
+                    </div>
+                </div>
+
+                <div class="cobro-vuelto" id="cobroVuelto">Total a cobrar</div>
+
+                <div class="modal-actions">
+                    <button class="btn btn-secondary" onclick="cerrarModalCobro()">Cancelar</button>
+                    <button class="btn btn-success" id="btnConfirmarCobro" onclick="confirmarCobro()">Confirmar cobro</button>
+                </div>
+            </div>
+        </div>
+
         <!-- DIÁLOGO DE CONFIRMACIÓN -->
         <div class="modal-overlay hidden" id="modalConfirmar">
             <div class="modal-box confirm-box">
@@ -449,10 +479,10 @@
 
     </main>
 
-    <script src="js/db.js?v=20261122b"></script>
-    <script src="js/pos.js?v=20261122b"></script>
-    <script src="js/realtime.js?v=20261122b"></script>
-    <script src="modulos/ticket/ticket.js?v=20261122b"></script>
-    <script src="js/ventas.js?v=20261122b"></script>
+    <script src="js/db.js?v=20261122d"></script>
+    <script src="js/pos.js?v=20261122d"></script>
+    <script src="js/realtime.js?v=20261122d"></script>
+    <script src="modulos/ticket/ticket.js?v=20261122d"></script>
+    <script src="js/ventas.js?v=20261122d"></script>
 </body>
 </html>

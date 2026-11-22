@@ -11,7 +11,7 @@ const VentasModule = (() => {
     let unidadesPorVenta = {};     // venta_id -> unidades (solo de la página visible)
     let ventaActual = null;        // Venta abierta en el modal de detalle
     let rangoActual = null;        // { desde, hasta, etiqueta }
-    let columnaEstadoDisponible = null; // null = sin comprobar, false = la base no tiene "estado"
+    
 
     const cacheDetalles = new Map();
 
@@ -40,6 +40,11 @@ const VentasModule = (() => {
         const d = new Date(iso);
         if (isNaN(d.getTime())) return '-';
         return d.toLocaleString();
+    }
+
+    function etiquetaPago(metodo) {
+        const nombres = { EFECTIVO: 'Efectivo', TARJETA: 'Tarjeta', TRANSFERENCIA: 'Transferencia' };
+        return nombres[metodo] || 'Efectivo';
     }
 
     function folio(id) {
@@ -94,34 +99,19 @@ const VentasModule = (() => {
         const acumulado = [];
         const paso = 500;
 
-        // Algunas instalaciones antiguas no tienen la columna "estado": se detecta y se reintenta sin ella
-        async function pedirPagina(offset, conEstado) {
-            const campos = conEstado
-                ? 'id, usuario, total, estado, created_at'
-                : 'id, usuario, total, created_at';
-
-            const consulta = supabaseClient
+        // Con "*" no falla si a la base le falta alguna columna nueva
+        for (let offset = 0; offset < LIMITE_SEGURIDAD; offset += paso) {
+            const respuesta = await supabaseClient
                 .from('ventas')
-                .select(campos)
+                .select('*')
                 .gte('created_at', desde.toISOString())
                 .lte('created_at', hasta.toISOString())
                 .order('created_at', { ascending: false })
-                .order('id', { ascending: false });
-
-            return consulta.range(offset, offset + paso - 1);
-        }
-
-        for (let offset = 0; offset < LIMITE_SEGURIDAD; offset += paso) {
-            let conEstado = columnaEstadoDisponible !== false;
-            let respuesta = await pedirPagina(offset, conEstado);
-
-            if (respuesta.error && conEstado) {
-                columnaEstadoDisponible = false;
-                conEstado = false;
-                respuesta = await pedirPagina(offset, conEstado);
-            }
+                .order('id', { ascending: false })
+                .range(offset, offset + paso - 1);
 
             if (respuesta.error) throw respuesta.error;
+
             const data = respuesta.data || [];
             acumulado.push(...data);
             if (data.length < paso) break;
@@ -190,7 +180,7 @@ const VentasModule = (() => {
         unidadesPorVenta = await cargarUnidades(trozo.map(v => v.id));
 
         if (!trozo.length) {
-            tbody.innerHTML = '<tr><td colspan="7" class="empty">No hay ventas en estas fechas</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="8" class="empty">No hay ventas en estas fechas</td></tr>';
         } else {
             tbody.innerHTML = trozo.map(v => {
                 const anulada = esAnulada(v);
@@ -200,6 +190,7 @@ const VentasModule = (() => {
                     <td>${escapar(v.usuario || '-')}</td>
                     <td class="td-num">${unidadesPorVenta[v.id] || 0}</td>
                     <td class="td-num">${dinero(v.total)}</td>
+                    <td>${etiquetaPago(v.metodo_pago)}</td>
                     <td><span class="badge-estado ${anulada ? 'badge-anulada' : 'badge-emitida'}">${anulada ? 'Anulada' : 'Válida'}</span></td>
                     <td class="td-acciones">
                         <button class="btn-icon btn-ver" title="Ver detalle" onclick="verVenta(${v.id})">👁️</button>
@@ -225,7 +216,7 @@ const VentasModule = (() => {
         if (!tbody) return;
 
         rangoActual = rangoSeleccionado();
-        tbody.innerHTML = '<tr><td colspan="7" class="empty">Cargando ventas...</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="8" class="empty">Cargando ventas...</td></tr>';
 
         try {
             ventas = await traerVentas(rangoActual.desde, rangoActual.hasta);
@@ -235,7 +226,7 @@ const VentasModule = (() => {
         } catch (err) {
             ventas = [];
             renderKPIs();
-            tbody.innerHTML = `<tr><td colspan="7" class="empty" style="color:#dc2626;">No se pudieron cargar las ventas</td></tr>`;
+            tbody.innerHTML = `<tr><td colspan="8" class="empty" style="color:#dc2626;">No se pudieron cargar las ventas</td></tr>`;
             toast('No se pudieron cargar las ventas', 'error');
         }
     };
@@ -274,6 +265,7 @@ const VentasModule = (() => {
         document.getElementById('vd-info').innerHTML = `
             <b>Fecha:</b> ${fecha(venta.created_at)}<br>
             <b>Vendedor:</b> ${escapar(venta.usuario || '-')}<br>
+            <b>Pago:</b> ${etiquetaPago(venta.metodo_pago)}${venta.vuelto > 0 ? ` · Vuelto ${dinero(venta.vuelto)}` : ''}<br>
             <b>Estado:</b> <span class="badge-estado ${anulada ? 'badge-anulada' : 'badge-emitida'}">${anulada ? 'Anulada' : 'Válida'}</span>
         `;
 
@@ -347,7 +339,10 @@ const VentasModule = (() => {
                 items,
                 subtotal: base,
                 iva: Math.max(0, total - base),
-                total
+                total,
+                metodo_pago: venta.metodo_pago,
+                monto_recibido: venta.monto_recibido,
+                vuelto: venta.vuelto
             });
         } catch (err) {
             toast('No se pudo imprimir el ticket', 'error');

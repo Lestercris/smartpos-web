@@ -38,7 +38,7 @@ movil/
 
 | Módulo | Qué hace |
 | --- | --- |
-| POS | Carrito por código de barras o teclado, cantidades, IVA por producto y total |
+| POS | Carrito por código de barras o teclado, cantidades, IVA por producto, forma de pago (efectivo/tarjeta/transferencia) y cálculo de vuelto |
 | Caja | Apertura/cierre de turno, monto inicial, arqueo y diferencia (las ventas anuladas no suman) |
 | Productos | Alta, imagen, stock mínimo, precios, margen, IVA, edición con vista grande de imagen, duplicar, entrada/salida de stock con historial, importar/exportar Excel, etiquetas |
 | Comprobantes | Búsqueda por escáner o folio, devoluciones parciales y anulación completa |
@@ -75,12 +75,13 @@ Los scripts de corrección de esquema están en [`sql/`](sql/). Hay que ejecutar
 4. `sql/004_rls_lectura_devoluciones.sql` — permite leer `devoluciones` y `devolucion_detalles` desde el navegador (sin esto, una devolución se guarda pero el comprobante sigue mostrando 0 devuelto).
 5. `sql/005_movimientos_stock.sql` — tabla `movimientos_stock` con el historial de entradas y salidas de inventario.
 6. `sql/006_ocultar_productos.sql` — columna `productos.activo` para ocultar productos con ventas (sin romper el historial) y permisos de borrado con RLS.
+7. `sql/007_metodo_pago.sql` — forma de pago (efectivo/tarjeta/transferencia), importe recibido y vuelto en cada venta.
 
 > La clave `anon` es pública por diseño; la seguridad real depende de las políticas RLS configuradas en Supabase.
 
 ## Pendientes sugeridos
 
-- Forma de pago (efectivo/tarjeta/transferencia), cálculo de vuelto y cliente en la venta.
+- Cliente asociado a la venta y descuentos.
 - Datos fiscales del negocio en el ticket (nombre, RIF/NIT, dirección, logo).
 - Descuentos por línea o por venta.
 - Modo offline / PWA para seguir vendiendo sin internet.
