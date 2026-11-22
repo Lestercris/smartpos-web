@@ -7,8 +7,8 @@
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://cdn.sheetjs.com/xlsx-0.20.0/package/dist/xlsx.full.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.6/dist/JsBarcode.all.min.js"></script>
-    <link rel="stylesheet" href="css/styles.css?v=20261122q">
-    <link rel="stylesheet" href="modulos/ticket/ticket.css?v=20261122q">
+    <link rel="stylesheet" href="css/styles.css?v=20261122r">
+    <link rel="stylesheet" href="modulos/ticket/ticket.css?v=20261122r">
 </head>
 <body>
     <header class="app-header">
@@ -443,8 +443,8 @@
 
                 <div class="form-field mb-20">
                     <label>Descuento</label>
-                    <div class="input-row">
-                        <select id="cobroDescuentoTipo" onchange="actualizarDescuento()">
+                    <div class="input-row cobro-descuento-row">
+                        <select id="cobroDescuentoTipo" onchange="actualizarDescuento(); document.getElementById('cobroDescuento').focus();">
                             <option value="NINGUNO">Sin descuento</option>
                             <option value="PORCENTAJE">Porcentaje (%)</option>
                             <option value="IMPORTE">Importe ($)</option>
@@ -565,10 +565,10 @@
 
     </main>
 
-    <script src="js/db.js?v=20261122q"></script>
-    <script src="js/pos.js?v=20261122q"></script>
-    <script src="js/realtime.js?v=20261122q"></script>
-    <script src="modulos/ticket/ticket.js?v=20261122q"></script>
-    <script src="js/ventas.js?v=20261122q"></script>
+    <script src="js/db.js?v=20261122r"></script>
+    <script src="js/pos.js?v=20261122r"></script>
+    <script src="js/realtime.js?v=20261122r"></script>
+    <script src="modulos/ticket/ticket.js?v=20261122r"></script>
+    <script src="js/ventas.js?v=20261122r"></script>
 </body>
 </html>

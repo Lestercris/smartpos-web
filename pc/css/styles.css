@@ -703,6 +703,10 @@ main { padding: 24px; max-width: 1600px; margin: 0 auto; }
 .cobro-vuelto.cobro-ok { background: #dcfce7; color: #166534; }
 .cobro-vuelto.cobro-error { background: #fee2e2; color: #991b1b; }
 
+.cobro-descuento-row { display: flex; gap: 8px; }
+.form-field .cobro-descuento-row select { width: auto; flex: 0 0 58%; }
+.form-field .cobro-descuento-row input { width: auto; flex: 1 1 auto; min-width: 70px; }
+
 /* ================= DIÁLOGO DE CONFIRMACIÓN ================= */
 .confirm-box { max-width: 420px; text-align: center; }
 .confirm-icono {
