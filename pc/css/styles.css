@@ -618,6 +618,34 @@ main { padding: 24px; max-width: 1600px; margin: 0 auto; }
     .prod-imagen { height: 200px; }
 }
 
+/* ================= DIÁLOGO DE CONFIRMACIÓN ================= */
+.confirm-box { max-width: 420px; text-align: center; }
+.confirm-icono {
+    width: 58px;
+    height: 58px;
+    margin: 0 auto 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: #fef3c7;
+    border-radius: 50%;
+    font-size: 26px;
+}
+.confirm-box h2 {
+    border-bottom: none;
+    padding-bottom: 0;
+    margin-bottom: 8px;
+    font-size: 1.15rem;
+}
+.confirm-mensaje {
+    font-size: 14px;
+    color: #4b5563;
+    line-height: 1.55;
+    margin-bottom: 4px;
+}
+.confirm-box .modal-actions { justify-content: center; }
+.confirm-box .modal-actions .btn { min-width: 120px; }
+
 /* ================= ENTRADA / SALIDA DE STOCK ================= */
 .stock-producto {
     font-size: 14px;

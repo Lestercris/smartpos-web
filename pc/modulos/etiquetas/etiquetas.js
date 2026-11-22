@@ -2,14 +2,34 @@
 const SUPABASE_URL = 'https://aqkwuwsogrrllatyhrfz.supabase.co';
 const SUPABASE_ANON_KEY = 'sb_publishable_GnsebOkP_46qA05Q-r20cA_mKQjuFwX';
 
+// Aviso flotante con el estilo de la app (sustituye a alert)
+function avisar(mensaje, tipo) {
+    let toast = document.getElementById('toast-etiquetas');
+    if (toast) toast.remove();
+
+    toast = document.createElement('div');
+    toast.id = 'toast-etiquetas';
+    toast.className = 'toast-etiquetas ' + (tipo === 'error' ? 'error' : 'ok');
+    toast.textContent = mensaje;
+    document.body.appendChild(toast);
+
+    requestAnimationFrame(() => toast.classList.add('visible'));
+    setTimeout(() => {
+        toast.classList.remove('visible');
+        setTimeout(() => toast.remove(), 300);
+    }, tipo === 'error' ? 5000 : 3000);
+}
+
 document.addEventListener('DOMContentLoaded', async () => {
+    const container = document.getElementById('etiquetas-container');
+
     if (typeof supabase === 'undefined') {
-        alert("Error crítico: La librería de Supabase no se cargó.");
+        avisar('No se pudo cargar la librería de datos. Revisa la conexión.', 'error');
+        if (container) container.innerHTML = '<p style="text-align:center; width:100%; color:#dc2626;">No se pudo cargar la librería de datos.</p>';
         return;
     }
     const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-    const container = document.getElementById('etiquetas-container');
     if (!container) return;
 
     container.innerHTML = '<p style="text-align:center; width:100%;">Cargando productos...</p>';
@@ -139,7 +159,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             });
 
             if (printContainer.children.length === 0) {
-                alert("No has seleccionado ninguna etiqueta para imprimir.");
+                avisar('No has seleccionado ninguna etiqueta para imprimir.', 'error');
                 return;
             }
 

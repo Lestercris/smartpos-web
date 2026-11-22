@@ -358,6 +358,19 @@
             </div>
         </div>
 
+        <!-- DIÁLOGO DE CONFIRMACIÓN -->
+        <div class="modal-overlay hidden" id="modalConfirmar">
+            <div class="modal-box confirm-box">
+                <div class="confirm-icono">⚠️</div>
+                <h2 id="confirmTitulo">¿Seguro?</h2>
+                <p id="confirmMensaje" class="confirm-mensaje"></p>
+                <div class="modal-actions">
+                    <button class="btn btn-secondary" onclick="cerrarConfirmacion(false)">Cancelar</button>
+                    <button class="btn btn-danger" id="confirmAceptar" onclick="cerrarConfirmacion(true)">Aceptar</button>
+                </div>
+            </div>
+        </div>
+
         <!-- MODAL DE PRODUCTO (VER / EDITAR) -->
         <div class="modal-overlay hidden" id="modalProducto">
             <div class="modal-box" style="max-width: 820px;">

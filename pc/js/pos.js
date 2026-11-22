@@ -266,6 +266,7 @@ document.addEventListener('DOMContentLoaded', () => {
         console.error('Detalle técnico:', texto);
 
         if (!texto) return 'Algo salió mal. Inténtalo otra vez.';
+        if (/violates foreign key constraint/i.test(texto)) return 'No se puede eliminar porque está en uso.';
         if (/row-level security|permission denied/i.test(texto)) return 'No hay permiso para esta acción.';
         if (/duplicate key/i.test(texto)) return 'Ese dato ya existe.';
         if (/does not exist/i.test(texto)) return 'Falta configurar la base de datos. Avisa al administrador.';
@@ -363,15 +364,24 @@ document.addEventListener('DOMContentLoaded', () => {
             cargarProductosAdmin();
             
         } catch (err) { 
-            mostrarNotificacion('Error: ' + err.message, 'error'); 
+            mostrarNotificacion('No se pudo guardar. ' + mensajeError(err), 'error'); 
         }
     };
 
     window.eliminarProducto = async function(id) { 
         const prod = todosLosProductos.find(p => p.id === id);
         const nombre = prod ? prod.nombre : 'este producto';
-        if (!confirm(`¿Eliminar "${nombre}"? Esta acción no se puede deshacer.`)) return;
-        await supabaseClient.from('productos').delete().eq('id', id);
+
+        const confirmado = await abrirConfirmacion({
+            titulo: 'Eliminar producto',
+            mensaje: `Se va a eliminar "${nombre}". Esta acción no se puede deshacer.`,
+            boton: 'Eliminar',
+            peligro: true
+        });
+        if (!confirmado) return;
+
+        const { error } = await supabaseClient.from('productos').delete().eq('id', id);
+        if (error) return mostrarNotificacion('No se pudo eliminar. ' + mensajeError(error), 'error');
         mostrarNotificacion('Producto eliminado', 'success');
         cargarProductosAdmin();
     };
@@ -729,7 +739,20 @@ document.addEventListener('DOMContentLoaded', () => {
         const { data } = await supabaseClient.from('clientes').select('*, tipos_documento(abreviatura)').order('nombre');
         tbody.innerHTML = data.map(c => `<tr><td>${c.tipos_documento ? c.tipos_documento.abreviatura : '-'} ${c.numero_documento}</td><td>${c.nombre}</td><td>${c.telefono || '-'}</td><td>${c.direccion || '-'}</td><td><button class="btn-icon btn-danger" onclick="eliminarCliente(${c.id})">🗑️</button></td></tr>`).join('');
     }
-    window.eliminarCliente = async function(id) { if(!confirm('¿Eliminar?')) return; await supabaseClient.from('clientes').delete().eq('id', id); cargarClientes(); };
+    window.eliminarCliente = async function (id) {
+        const confirmado = await abrirConfirmacion({
+            titulo: 'Eliminar cliente',
+            mensaje: 'Se va a eliminar este cliente. Esta acción no se puede deshacer.',
+            boton: 'Eliminar',
+            peligro: true
+        });
+        if (!confirmado) return;
+
+        const { error } = await supabaseClient.from('clientes').delete().eq('id', id);
+        if (error) return mostrarNotificacion('No se pudo eliminar. ' + mensajeError(error), 'error');
+        mostrarNotificacion('Cliente eliminado', 'success');
+        cargarClientes();
+    };
 
     // ==================== GESTIÓN DE PROVEEDORES ====================
     window.guardarProveedor = async function() {
@@ -749,7 +772,21 @@ document.addEventListener('DOMContentLoaded', () => {
         const { data } = await supabaseClient.from('proveedores').select('*, tipos_documento(abreviatura)').order('nombre');
         tbody.innerHTML = data.map(p => `<tr><td>${p.tipos_documento ? p.tipos_documento.abreviatura : '-'} ${p.numero_documento}</td><td>${p.nombre}</td><td>${p.contacto || '-'}</td><td>${p.telefono || '-'}</td><td><button class="btn-icon btn-danger" onclick="eliminarProveedor(${p.id})">🗑️</button></td></tr>`).join('');
     }
-    window.eliminarProveedor = async function(id) { if(!confirm('¿Eliminar?')) return; await supabaseClient.from('proveedores').delete().eq('id', id); cargarProveedores(); cargarDatosIniciales(); };
+    window.eliminarProveedor = async function (id) {
+        const confirmado = await abrirConfirmacion({
+            titulo: 'Eliminar proveedor',
+            mensaje: 'Se va a eliminar este proveedor. Esta acción no se puede deshacer.',
+            boton: 'Eliminar',
+            peligro: true
+        });
+        if (!confirmado) return;
+
+        const { error } = await supabaseClient.from('proveedores').delete().eq('id', id);
+        if (error) return mostrarNotificacion('No se pudo eliminar. ' + mensajeError(error), 'error');
+        mostrarNotificacion('Proveedor eliminado', 'success');
+        cargarProveedores();
+        cargarDatosIniciales();
+    };
 
     // ==================== AJUSTES ====================
     window.guardarCategoria = async function() { 
@@ -761,7 +798,21 @@ document.addEventListener('DOMContentLoaded', () => {
         cargarAjustes(); 
         cargarDatosIniciales(); 
     };
-    window.eliminarCategoria = async function(id) { await supabaseClient.from('categorias').delete().eq('id', id); cargarAjustes(); cargarDatosIniciales(); };
+    window.eliminarCategoria = async function (id) {
+        const confirmado = await abrirConfirmacion({
+            titulo: 'Eliminar categoría',
+            mensaje: 'Los productos de esta categoría quedarán sin categoría.',
+            boton: 'Eliminar',
+            peligro: true
+        });
+        if (!confirmado) return;
+
+        const { error } = await supabaseClient.from('categorias').delete().eq('id', id);
+        if (error) return mostrarNotificacion('No se pudo eliminar. ' + mensajeError(error), 'error');
+        mostrarNotificacion('Categoría eliminada', 'success');
+        cargarAjustes();
+        cargarDatosIniciales();
+    };
 
     window.guardarSubcategoria = async function() {
         const categoria_id = document.getElementById('newSubCatPadre').value;
@@ -773,7 +824,20 @@ document.addEventListener('DOMContentLoaded', () => {
         mostrarNotificacion('Subcategoría añadida', 'success');
         cargarAjustes();
     };
-    window.eliminarSubcategoria = async function(id) { await supabaseClient.from('subcategorias').delete().eq('id', id); cargarAjustes(); };
+    window.eliminarSubcategoria = async function (id) {
+        const confirmado = await abrirConfirmacion({
+            titulo: 'Eliminar subcategoría',
+            mensaje: 'Esta acción no se puede deshacer.',
+            boton: 'Eliminar',
+            peligro: true
+        });
+        if (!confirmado) return;
+
+        const { error } = await supabaseClient.from('subcategorias').delete().eq('id', id);
+        if (error) return mostrarNotificacion('No se pudo eliminar. ' + mensajeError(error), 'error');
+        mostrarNotificacion('Subcategoría eliminada', 'success');
+        cargarAjustes();
+    };
 
     window.guardarUbicacion = async function() { 
         const nombre = document.getElementById('newUbicNombre').value.trim(); 
@@ -782,7 +846,21 @@ document.addEventListener('DOMContentLoaded', () => {
         document.getElementById('newUbicNombre').value = ''; 
         cargarAjustes(); cargarDatosIniciales(); 
     };
-    window.eliminarUbicacion = async function(id) { await supabaseClient.from('ubicaciones').delete().eq('id', id); cargarAjustes(); cargarDatosIniciales(); };
+    window.eliminarUbicacion = async function (id) {
+        const confirmado = await abrirConfirmacion({
+            titulo: 'Eliminar ubicación',
+            mensaje: 'Los productos de esta ubicación quedarán sin ubicación.',
+            boton: 'Eliminar',
+            peligro: true
+        });
+        if (!confirmado) return;
+
+        const { error } = await supabaseClient.from('ubicaciones').delete().eq('id', id);
+        if (error) return mostrarNotificacion('No se pudo eliminar. ' + mensajeError(error), 'error');
+        mostrarNotificacion('Ubicación eliminada', 'success');
+        cargarAjustes();
+        cargarDatosIniciales();
+    };
 
     window.guardarUMedida = async function() { 
         const nombre = document.getElementById('newUMedNombre').value.trim(), abrev = document.getElementById('newUMedAbrev').value.trim().toUpperCase(); 
@@ -792,7 +870,21 @@ document.addEventListener('DOMContentLoaded', () => {
         document.getElementById('newUMedNombre').value = ''; document.getElementById('newUMedAbrev').value = ''; 
         mostrarNotificacion('Unidad añadida', 'success'); cargarAjustes(); cargarDatosIniciales(); 
     };
-    window.eliminarUMedida = async function(id) { await supabaseClient.from('unidades_medida').delete().eq('id', id); cargarAjustes(); cargarDatosIniciales(); };
+    window.eliminarUMedida = async function (id) {
+        const confirmado = await abrirConfirmacion({
+            titulo: 'Eliminar unidad de medida',
+            mensaje: 'Los productos con esta medida quedarán sin medida.',
+            boton: 'Eliminar',
+            peligro: true
+        });
+        if (!confirmado) return;
+
+        const { error } = await supabaseClient.from('unidades_medida').delete().eq('id', id);
+        if (error) return mostrarNotificacion('No se pudo eliminar. ' + mensajeError(error), 'error');
+        mostrarNotificacion('Unidad eliminada', 'success');
+        cargarAjustes();
+        cargarDatosIniciales();
+    };
 
     window.guardarTipoDoc = async function() { 
         const nombre = document.getElementById('newTipoDocNombre').value.trim(), abrev = document.getElementById('newTipoDocAbrev').value.trim().toUpperCase(); 
@@ -802,7 +894,21 @@ document.addEventListener('DOMContentLoaded', () => {
         document.getElementById('newTipoDocNombre').value = ''; document.getElementById('newTipoDocAbrev').value = ''; 
         mostrarNotificacion('Tipo añadido', 'success'); cargarAjustes(); cargarDatosIniciales(); 
     };
-    window.eliminarTipoDoc = async function(id) { await supabaseClient.from('tipos_documento').delete().eq('id', id); cargarAjustes(); cargarDatosIniciales(); };
+    window.eliminarTipoDoc = async function (id) {
+        const confirmado = await abrirConfirmacion({
+            titulo: 'Eliminar tipo de documento',
+            mensaje: 'Esta acción no se puede deshacer.',
+            boton: 'Eliminar',
+            peligro: true
+        });
+        if (!confirmado) return;
+
+        const { error } = await supabaseClient.from('tipos_documento').delete().eq('id', id);
+        if (error) return mostrarNotificacion('No se pudo eliminar. ' + mensajeError(error), 'error');
+        mostrarNotificacion('Tipo de documento eliminado', 'success');
+        cargarAjustes();
+        cargarDatosIniciales();
+    };
 
     async function cargarAjustes() {
         const { data: cats } = await supabaseClient.from('categorias').select('*').order('nombre');
@@ -896,6 +1002,36 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     // Disponible para los demás módulos (ventas.js, realtime.js, etc.)
     window.mostrarNotificacion = mostrarNotificacion;
+
+    // ==================== DIÁLOGO DE CONFIRMACIÓN ====================
+    let resolverConfirmacion = null;
+
+    function abrirConfirmacion(opciones) {
+        return new Promise((resolver) => {
+            resolverConfirmacion = resolver;
+
+            document.getElementById('confirmTitulo').textContent = opciones.titulo || '¿Seguro?';
+            document.getElementById('confirmMensaje').textContent = opciones.mensaje || '';
+
+            const boton = document.getElementById('confirmAceptar');
+            boton.textContent = opciones.boton || 'Aceptar';
+            boton.className = 'btn ' + (opciones.peligro ? 'btn-danger' : 'btn-primary');
+
+            document.getElementById('modalConfirmar').classList.remove('hidden');
+        });
+    }
+
+    window.cerrarConfirmacion = function (resultado) {
+        document.getElementById('modalConfirmar').classList.add('hidden');
+
+        const resolver = resolverConfirmacion;
+        resolverConfirmacion = null;
+        if (resolver) resolver(!!resultado);
+    };
+
+    document.addEventListener('keydown', (evento) => {
+        if (evento.key === 'Escape' && resolverConfirmacion) window.cerrarConfirmacion(false);
+    });
 
 
         // ==================== MÓDULO DE COMPROBANTES Y DEVOLUCIONES ====================
@@ -1087,7 +1223,13 @@ document.addEventListener('DOMContentLoaded', () => {
     // --- ANULAR VENTA COMPLETA ---
     window.anularVentaCompleta = async function() {
         if (!comprobanteActual) return;
-        if (!confirm('¿Anular toda la venta? Los productos vuelven al inventario y la venta queda sin efecto.')) return;
+        const confirmado = await abrirConfirmacion({
+            titulo: 'Anular venta',
+            mensaje: 'Los productos volverán al inventario y la venta quedará sin efecto.',
+            boton: 'Anular venta',
+            peligro: true
+        });
+        if (!confirmado) return;
 
         try {
             mostrarNotificacion('Anulando...', 'success');
