@@ -85,7 +85,7 @@ document.addEventListener('DOMContentLoaded', () => {
     window.abrirModalAbrirCaja = function() {
         document.getElementById('modalCaja').classList.remove('hidden');
         document.getElementById('cajaModalTitle').textContent = 'Abrir Caja';
-        document.getElementById('cajaModalLabel').textContent = 'Monto Inicial (Vuelto)';
+        document.getElementById('cajaModalLabel').textContent = 'Dinero inicial (para cambio)';
         document.getElementById('cajaMonto').value = '';
         document.getElementById('cajaNotas').value = '';
         document.getElementById('cajaResultado').classList.add('hidden');
@@ -114,15 +114,15 @@ document.addEventListener('DOMContentLoaded', () => {
 
         document.getElementById('modalCaja').classList.remove('hidden');
         document.getElementById('cajaModalTitle').textContent = 'Cerrar Caja';
-        document.getElementById('cajaModalLabel').textContent = 'Efectivo Contado en Caja';
+        document.getElementById('cajaModalLabel').textContent = 'Dinero contado en caja';
         document.getElementById('cajaMonto').value = '';
         document.getElementById('cajaNotas').value = '';
         
         const resDiv = document.getElementById('cajaResultado');
         resDiv.classList.remove('hidden');
-        resDiv.innerHTML = `<p><b>Monto Inicial:</b> $${Number(turnoActual.monto_inicial).toFixed(2)}</p>
+        resDiv.innerHTML = `<p><b>Dinero inicial:</b> $${Number(turnoActual.monto_inicial).toFixed(2)}</p>
                             <p><b>Ventas:</b> $${totalVentas.toFixed(2)}</p>
-                            <p style="border-top:1px solid #ccc; padding-top:5px; margin-top:5px;"><b>Monto Sistema:</b> $${montoSistema.toFixed(2)}</p>`;
+                            <p style="border-top:1px solid #ccc; padding-top:5px; margin-top:5px;"><b>Debería haber:</b> $${montoSistema.toFixed(2)}</p>`;
                             
         document.getElementById('btnConfirmarCaja').onclick = () => confirmarCerrarCaja(montoSistema);
     };
@@ -155,7 +155,9 @@ document.addEventListener('DOMContentLoaded', () => {
             estado: 'CERRADO'
         }).eq('id', turnoActual.id);
         
-        const msj = diferencia === 0 ? '¡Caja cuadrada perfectamente!' : `Cierre con ${diferencia > 0 ? 'sobrante' : 'faltante'} de $${Math.abs(diferencia).toFixed(2)}`;
+        const msj = diferencia === 0
+            ? 'La caja cuadra perfecto'
+            : (diferencia > 0 ? `Sobran $${Math.abs(diferencia).toFixed(2)}` : `Faltan $${Math.abs(diferencia).toFixed(2)}`);
         mostrarNotificacion(msj, diferencia === 0 ? 'success' : 'error');
         
         cerrarModalCaja();
@@ -241,68 +243,33 @@ document.addEventListener('DOMContentLoaded', () => {
         const subtotal = sGrav + sExento, iva = sGrav * IVA_RATE, total = subtotal + iva;
         
         try {
-            mostrarNotificacion('Procesando...', 'success');
+            mostrarNotificacion('Cobrando...', 'success');
             const { data, error } = await supabaseClient.rpc('realizar_venta', { 
                 p_usuario: 'Vendedor Demo', 
                 p_items: carritoCopia.map(item => ({ id: item.id, cantidad: item.cantidad })) 
             });
             if (error) throw error;
 
-            // La función realizar_venta no guarda las líneas: las guardamos aquí
-            // para que el comprobante, las devoluciones y los reportes tengan detalle.
-            const detallesOk = await guardarDetallesVenta(data.venta_id, carritoCopia);
-
-            mostrarNotificacion(
-                detallesOk ? `¡Venta #${data.venta_id}!` : `Venta #${data.venta_id} guardada SIN detalle de productos`,
-                detallesOk ? 'success' : 'error'
-            );
+            mostrarNotificacion(`¡Venta #${data.venta_id}!`, 'success');
             carrito = []; renderCarrito();
             
             if (typeof moduloTicket !== 'undefined') {
                 moduloTicket.mostrar({ id: data.venta_id, usuario: 'Vendedor Demo', items: carritoCopia, subtotal, iva, total });
             }
             if (!document.getElementById('admin-view').classList.contains('hidden')) cargarProductosAdmin();
-        } catch (err) { mostrarNotificacion('Error: ' + mensajeError(err), 'error'); }
+        } catch (err) { mostrarNotificacion('No se pudo cobrar. ' + mensajeError(err), 'error'); }
     };
 
-    // Guarda las líneas de la venta solo si aún no existen (evita duplicados)
-    async function guardarDetallesVenta(ventaId, items) {
-        try {
-            const { data: existentes, error: errExiste } = await supabaseClient
-                .from('venta_detalles')
-                .select('id')
-                .eq('venta_id', ventaId)
-                .limit(1);
-
-            if (errExiste) throw errExiste;
-            if (existentes && existentes.length > 0) return true;
-
-            const filas = items.map(item => ({
-                venta_id: ventaId,
-                producto_id: item.id,
-                cantidad: item.cantidad,
-                precio_unitario: item.precio
-            }));
-
-            const { error } = await supabaseClient.from('venta_detalles').insert(filas);
-            if (error) throw error;
-            return true;
-        } catch (err) {
-            console.warn('No se pudieron guardar los detalles de la venta:', err.message || err);
-            return false;
-        }
-    }
-
-    // Traduce los errores técnicos de la base en algo accionable
+    // Convierte los errores técnicos en mensajes sencillos para el usuario
     function mensajeError(err) {
-        const texto = String((err && err.message) || err || 'Error desconocido');
-        if (/estado/i.test(texto) && /does not exist/i.test(texto)) {
-            return 'falta la columna "estado" en la tabla ventas. Ejecuta sql/001_fix_ventas_estado.sql en Supabase.';
-        }
-        if (/does not exist/i.test(texto)) {
-            return texto + ' (revisa el esquema en Supabase)';
-        }
-        return texto;
+        const texto = String((err && err.message) || err || '');
+        console.error('Detalle técnico:', texto);
+
+        if (!texto) return 'Algo salió mal. Inténtalo otra vez.';
+        if (/row-level security|permission denied/i.test(texto)) return 'No hay permiso para esta acción.';
+        if (/duplicate key/i.test(texto)) return 'Ese dato ya existe.';
+        if (/does not exist/i.test(texto)) return 'Falta configurar la base de datos. Avisa al administrador.';
+        return 'Algo salió mal. Inténtalo otra vez.';
     }
         // ==================== GESTIÓN DE PRODUCTOS ====================
     window.cargarProductosAdmin = async function() {
@@ -339,9 +306,14 @@ document.addEventListener('DOMContentLoaded', () => {
                 const margen = pV - pC, pct = pC > 0 ? ((margen / pC) * 100).toFixed(1) : '0.0';
                 const tr = document.createElement('tr');
                 const tdImg = document.createElement('td');
-                tdImg.innerHTML = prod.imagen_url ? `<img src="${prod.imagen_url}" class="img-thumbnail">` : `<div class="img-thumbnail" style="background:#e2e8f0;"></div>`;
+                tdImg.style.cursor = 'pointer';
+                tdImg.title = 'Ver imagen y editar';
+                tdImg.innerHTML = prod.imagen_url
+                    ? `<img src="${prod.imagen_url}" class="img-thumbnail" alt="Producto">`
+                    : `<div class="img-thumbnail" style="background:#e2e8f0;"></div>`;
+                tdImg.onclick = () => verProducto(prod.id);
                 tr.innerHTML = `
-                    <td>${prod.codigo}</td><td>${prod.nombre}</td><td>${prod.categorias ? prod.categorias.nombre : '-'}</td><td>${prod.unidades_medida ? prod.unidades_medida.abreviatura : '-'}</td><td>${prod.stock_minimo || 0}</td><td style="font-weight:bold; color:${prod.stock <= prod.stock_minimo ? 'red' : 'green'}">${prod.stock}</td><td>$${pC.toFixed(2)}</td><td>$${pV.toFixed(2)}</td><td style="color: ${prod.aplica_iva ? '#16a34a' : '#dc2626'}; font-weight:bold;">${prod.aplica_iva ? 'Sí' : 'No'}</td><td>$${margen.toFixed(2)}</td><td>${pct}%</td><td>${prod.proveedores ? prod.proveedores.nombre : '-'}</td><td><button class="btn-icon btn-danger" onclick="eliminarProducto(${prod.id})">🗑️</button></td>`;
+                    <td>${prod.codigo}</td><td>${prod.nombre}</td><td>${prod.categorias ? prod.categorias.nombre : '-'}</td><td>${prod.unidades_medida ? prod.unidades_medida.abreviatura : '-'}</td><td>${prod.stock_minimo || 0}</td><td style="font-weight:bold; color:${prod.stock <= prod.stock_minimo ? 'red' : 'green'}">${prod.stock}</td><td>$${pC.toFixed(2)}</td><td>$${pV.toFixed(2)}</td><td style="color: ${prod.aplica_iva ? '#16a34a' : '#dc2626'}; font-weight:bold;">${prod.aplica_iva ? 'Sí' : 'No'}</td><td>$${margen.toFixed(2)}</td><td>${pct}%</td><td>${prod.proveedores ? prod.proveedores.nombre : '-'}</td><td class="td-acciones"><button class="btn-icon btn-ver" title="Ver y editar" onclick="verProducto(${prod.id})">✏️</button><button class="btn-icon btn-danger" title="Eliminar" onclick="eliminarProducto(${prod.id})">🗑️</button></td>`;
                 tr.insertBefore(tdImg, tr.firstChild); tbody.appendChild(tr);
             });
         }
@@ -396,10 +368,180 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     window.eliminarProducto = async function(id) { 
-        if (!confirm('¿Eliminar producto?')) return; 
-        await supabaseClient.from('productos').delete().eq('id', id); 
-        cargarProductosAdmin(); 
+        const prod = todosLosProductos.find(p => p.id === id);
+        const nombre = prod ? prod.nombre : 'este producto';
+        if (!confirm(`¿Eliminar "${nombre}"? Esta acción no se puede deshacer.`)) return;
+        await supabaseClient.from('productos').delete().eq('id', id);
+        mostrarNotificacion('Producto eliminado', 'success');
+        cargarProductosAdmin();
     };
+
+    // ==================== VER / EDITAR PRODUCTO ====================
+    let productoEditando = null;
+    let imagenQuitada = false;
+
+    function llenarSelect(id, items, valor, texto) {
+        const sel = document.getElementById(id);
+        if (!sel) return;
+        sel.innerHTML = '<option value="">—</option>';
+        (items || []).forEach(item => {
+            const opt = document.createElement('option');
+            opt.value = item.id;
+            opt.textContent = texto(item);
+            sel.appendChild(opt);
+        });
+        sel.value = valor != null ? String(valor) : '';
+    }
+
+    async function cargarSubcategoriasEdicion(categoriaId, seleccionada) {
+        const sel = document.getElementById('prodSubcategoria');
+        if (!sel) return;
+        sel.innerHTML = '<option value="">—</option>';
+        if (!categoriaId) return;
+
+        const { data } = await supabaseClient
+            .from('subcategorias')
+            .select('*')
+            .eq('categoria_id', categoriaId)
+            .order('nombre');
+
+        (data || []).forEach(sub => {
+            const opt = document.createElement('option');
+            opt.value = sub.id;
+            opt.textContent = sub.nombre;
+            sel.appendChild(opt);
+        });
+        sel.value = seleccionada != null ? String(seleccionada) : '';
+    }
+
+    window.cambiarCategoriaEdicion = function (categoriaId) {
+        cargarSubcategoriasEdicion(categoriaId, null);
+    };
+
+    function mostrarImagenProducto(url) {
+        const img = document.getElementById('prodImagen');
+        const sin = document.getElementById('prodSinImagen');
+        if (url) {
+            img.src = url;
+            img.classList.remove('hidden');
+            sin.classList.add('hidden');
+        } else {
+            img.removeAttribute('src');
+            img.classList.add('hidden');
+            sin.classList.remove('hidden');
+        }
+    }
+
+    window.verProducto = async function (id) {
+        const prod = todosLosProductos.find(p => p.id === id);
+        if (!prod) return mostrarNotificacion('No se encontró el producto', 'error');
+
+        productoEditando = prod;
+        imagenQuitada = false;
+
+        document.getElementById('prodModalTitulo').textContent = 'Ver y editar producto';
+        document.getElementById('prodNombre').value = prod.nombre || '';
+        document.getElementById('prodCodigo').value = prod.codigo || '';
+        document.getElementById('prodPrecioCompra').value = prod.precio_compra != null ? prod.precio_compra : 0;
+        document.getElementById('prodPrecio').value = prod.precio != null ? prod.precio : 0;
+        document.getElementById('prodStock').value = prod.stock != null ? prod.stock : 0;
+        document.getElementById('prodStockMin').value = prod.stock_minimo != null ? prod.stock_minimo : 0;
+        document.getElementById('prodAplicaIva').checked = !!prod.aplica_iva;
+
+        llenarSelect('prodCategoria', listaCategorias, prod.categoria_id, c => c.nombre);
+        llenarSelect('prodProveedor', listaProveedores, prod.proveedor_id, p => p.nombre);
+        llenarSelect('prodUbicacion', listaUbicaciones, prod.ubicacion_id, u => u.nombre);
+        llenarSelect('prodMedida', listaUMedidas, prod.unidad_medida_id, u => `${u.abreviatura} - ${u.nombre}`);
+
+        await cargarSubcategoriasEdicion(prod.categoria_id, prod.subcategoria_id);
+
+        mostrarImagenProducto(prod.imagen_url);
+        document.getElementById('prodNuevaImagen').value = '';
+        document.getElementById('modalProducto').classList.remove('hidden');
+    };
+
+    window.quitarImagenProducto = function () {
+        imagenQuitada = true;
+        document.getElementById('prodNuevaImagen').value = '';
+        mostrarImagenProducto(null);
+    };
+
+    window.cerrarModalProducto = function () {
+        document.getElementById('modalProducto').classList.add('hidden');
+        productoEditando = null;
+    };
+
+    window.guardarEdicionProducto = async function () {
+        if (!productoEditando) return;
+
+        const nombre = document.getElementById('prodNombre').value.trim();
+        const codigo = document.getElementById('prodCodigo').value.trim();
+        const precio = parseFloat(document.getElementById('prodPrecio').value);
+        const precioCompra = parseFloat(document.getElementById('prodPrecioCompra').value) || 0;
+        const stock = parseInt(document.getElementById('prodStock').value);
+        const stockMin = parseInt(document.getElementById('prodStockMin').value) || 0;
+
+        if (!nombre || !codigo || isNaN(precio) || isNaN(stock)) {
+            return mostrarNotificacion('Completa nombre, código, precio y stock', 'error');
+        }
+
+        try {
+            mostrarNotificacion('Guardando...', 'success');
+
+            let imagenUrl = imagenQuitada ? null : (productoEditando.imagen_url || null);
+            const archivo = document.getElementById('prodNuevaImagen').files[0];
+
+            if (archivo) {
+                const extension = archivo.name.split('.').pop();
+                const nombreArchivo = `${Date.now()}.${extension}`;
+                const { error: errorSubida } = await supabaseClient.storage
+                    .from('productos-imagenes')
+                    .upload(nombreArchivo, archivo);
+                if (errorSubida) throw errorSubida;
+
+                const { data: urlData } = supabaseClient.storage
+                    .from('productos-imagenes')
+                    .getPublicUrl(nombreArchivo);
+                imagenUrl = urlData.publicUrl;
+            }
+
+            const { error } = await supabaseClient.from('productos').update({
+                nombre,
+                codigo,
+                precio,
+                precio_compra: precioCompra,
+                stock,
+                stock_minimo: stockMin,
+                categoria_id: document.getElementById('prodCategoria').value || null,
+                subcategoria_id: document.getElementById('prodSubcategoria').value || null,
+                proveedor_id: document.getElementById('prodProveedor').value || null,
+                unidad_medida_id: document.getElementById('prodMedida').value || null,
+                ubicacion_id: document.getElementById('prodUbicacion').value || null,
+                aplica_iva: document.getElementById('prodAplicaIva').checked,
+                imagen_url: imagenUrl
+            }).eq('id', productoEditando.id);
+
+            if (error) throw error;
+
+            mostrarNotificacion('Producto guardado', 'success');
+            cerrarModalProducto();
+            cargarProductosAdmin();
+        } catch (err) {
+            mostrarNotificacion('No se pudo guardar. ' + mensajeError(err), 'error');
+        }
+    };
+
+    // Vista previa al elegir una imagen nueva
+    const inputImagenProducto = document.getElementById('prodNuevaImagen');
+    if (inputImagenProducto) {
+        inputImagenProducto.addEventListener('change', (e) => {
+            const archivo = e.target.files[0];
+            if (archivo) {
+                imagenQuitada = false;
+                mostrarImagenProducto(URL.createObjectURL(archivo));
+            }
+        });
+    }
 
     // ==================== GESTIÓN DE CLIENTES ====================
     window.guardarCliente = async function() {
@@ -582,7 +724,7 @@ document.addEventListener('DOMContentLoaded', () => {
         setTimeout(() => {
             toast.classList.remove('show');
             setTimeout(() => toast.remove(), 300);
-        }, 3000);
+        }, tipo === 'error' ? 6000 : 3000);
     }
     // Disponible para los demás módulos (ventas.js, realtime.js, etc.)
     window.mostrarNotificacion = mostrarNotificacion;
@@ -593,13 +735,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
        window.buscarComprobante = async function() {
         const query = document.getElementById('searchTicket').value.trim().toUpperCase();
-        if (!query) return mostrarNotificacion('Escribe o escanea un código de ticket', 'error');
+        if (!query) return mostrarNotificacion('Escribe el número del ticket o escanéalo', 'error');
 
         const idLimpio = query.replace(/[^0-9]/g, ''); 
-        if (!idLimpio) return mostrarNotificacion('Formato de ticket inválido', 'error');
+        if (!idLimpio) return mostrarNotificacion('Ese número no es un ticket', 'error');
 
         try {
-            mostrarNotificacion('Buscando ticket...', 'success');
+            mostrarNotificacion('Buscando...', 'success');
             
             // Hacemos una sola consulta trayendo la venta, sus productos y sus devoluciones
             const { data: venta, error: ventaError } = await supabaseClient
@@ -635,13 +777,13 @@ document.addEventListener('DOMContentLoaded', () => {
             }
 
             // Asignamos las cantidades disponibles
-            venta.venta_detalles.forEach(det => {
+            (venta.venta_detalles || []).forEach(det => {
                 det.cantidad_devuelta = devueltosMap[det.producto_id] || 0;
                 det.cantidad_disponible = det.cantidad - det.cantidad_devuelta;
             });
 
             // Renombramos la propiedad para que el resto del código funcione igual
-            venta.detalles = venta.venta_detalles;
+            venta.detalles = venta.venta_detalles || [];
 
             comprobanteActual = venta;
             renderizarComprobante();
@@ -655,40 +797,57 @@ document.addEventListener('DOMContentLoaded', () => {
         const v = comprobanteActual;
         document.getElementById('ticketResultado').classList.remove('hidden');
         document.getElementById('tk-titulo').textContent = 'Ticket #' + String(v.id).padStart(6, '0');
-        document.getElementById('tk-info').innerHTML = `
-            <b>Fecha:</b> ${new Date(v.created_at).toLocaleString()}<br>
-            <b>Usuario:</b> ${v.usuario} | <b>Total:</b> $${Number(v.total).toFixed(2)}
-        `;
+
+        // Si la venta está anulada, todo volvió al inventario
+        const anulada = v.estado === 'ANULADA';
+        const totalDevuelto = anulada
+            ? Number(v.total)
+            : (v.detalles || []).reduce(
+                (suma, d) => suma + Number(d.cantidad_devuelta || 0) * Number(d.precio_unitario || 0),
+                0
+            );
+        const queda = Math.max(0, Number(v.total) - totalDevuelto);
+
+        let info = `<b>Fecha:</b> ${new Date(v.created_at).toLocaleString()}<br><b>Vendedor:</b> ${v.usuario}<br><b>Total:</b> $${Number(v.total).toFixed(2)}`;
+        if (totalDevuelto > 0) info += ` · <b>Devuelto:</b> $${totalDevuelto.toFixed(2)} · <b>Queda:</b> $${queda.toFixed(2)}`;
+        if (anulada) info += '<br><b style="color: #991b1b;">Venta anulada: todo volvió al inventario</b>';
+
+        document.getElementById('tk-info').innerHTML = info;
 
         // Estado del ticket
         const estadoDiv = document.getElementById('tk-estado');
-        if (v.estado === 'ANULADA') {
-            estadoDiv.innerHTML = '<span class="badge-estado badge-anulada">ANULADA</span>';
+        if (anulada) {
+            estadoDiv.innerHTML = '<span class="badge-estado badge-anulada">Anulada</span>';
             document.getElementById('btnDevolver').style.display = 'none';
             document.getElementById('btnAnular').style.display = 'none';
         } else {
-            estadoDiv.innerHTML = '<span class="badge-estado badge-emitida">EMITIDA</span>';
+            estadoDiv.innerHTML = '<span class="badge-estado badge-emitida">Válida</span>';
             document.getElementById('btnAnular').style.display = 'inline-flex';
             
             // Si ya se devolvió todo, ocultamos el botón de devolver
-            const hayDisponibles = v.detalles.some(d => d.cantidad_disponible > 0);
+            const hayDisponibles = (v.detalles || []).some(d => d.cantidad_disponible > 0);
             document.getElementById('btnDevolver').style.display = hayDisponibles ? 'inline-flex' : 'none';
         }
 
         // Tabla de detalles
         const tbody = document.getElementById('tk-detalles-body');
         if (!v.detalles || v.detalles.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="5" class="empty">Esta venta no tiene líneas guardadas (se registró antes del arreglo)</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="5" class="empty">Esta venta no tiene líneas de detalle registradas</td></tr>';
         } else {
-            tbody.innerHTML = v.detalles.map(d => `
+            tbody.innerHTML = v.detalles.map(d => {
+                // En una venta anulada todas las unidades volvieron al stock
+                const devuelta = anulada ? Number(d.cantidad) : Number(d.cantidad_devuelta || 0);
+                const disponible = anulada ? 0 : Number(d.cantidad_disponible || 0);
+
+                return `
                 <tr>
                     <td>${d.productos ? d.productos.nombre : 'Producto Eliminado'}</td>
                     <td>$${Number(d.precio_unitario).toFixed(2)}</td>
                     <td>${d.cantidad}</td>
-                    <td style="color: #b45309;">${d.cantidad_devuelta}</td>
-                    <td><b style="color: ${d.cantidad_disponible > 0 ? '#16a34a' : '#dc2626'}">${d.cantidad_disponible}</b></td>
-                </tr>
-            `).join('');
+                    <td style="color: #b45309;">${devuelta}</td>
+                    <td><b style="color: ${disponible > 0 ? '#16a34a' : '#dc2626'}">${disponible}</b></td>
+                </tr>`;
+            }).join('');
         }
     }
 
@@ -697,7 +856,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!comprobanteActual) return;
         
         const disponibles = comprobanteActual.detalles.filter(d => d.cantidad_disponible > 0);
-        if (disponibles.length === 0) return mostrarNotificacion('No hay productos disponibles para devolver', 'error');
+        if (disponibles.length === 0) return mostrarNotificacion('Esta venta no tiene productos para devolver', 'error');
 
         document.getElementById('modalDevolucion').classList.remove('hidden');
         document.getElementById('dev-motivo').value = '';
@@ -707,7 +866,7 @@ document.addEventListener('DOMContentLoaded', () => {
             <tr>
                 <td>${d.productos ? d.productos.nombre : 'Prod'}</td>
                 <td>${d.cantidad_disponible}</td>
-                <td><input type="number" class="input-cantidad dev-qty" data-id="${d.producto_id}" min="0" max="${d.cantidad_disponible}" value="0"></td>
+                <td><input type="number" class="input-cantidad dev-qty" data-id="${d.producto_id}" data-max="${d.cantidad_disponible}" min="0" max="${d.cantidad_disponible}" value="0"></td>
             </tr>
         `).join('');
     };
@@ -721,20 +880,24 @@ document.addEventListener('DOMContentLoaded', () => {
 
         const inputs = document.querySelectorAll('.dev-qty');
         const items = [];
-        
+        let ajustado = false;
+
         inputs.forEach(input => {
-            const cant = parseInt(input.value);
+            const max = parseInt(input.dataset.max) || 0;
+            let cant = parseInt(input.value) || 0;
+            if (cant > max) { cant = max; ajustado = true; }
             if (cant > 0) {
                 items.push({ id: parseInt(input.dataset.id), cantidad: cant });
             }
         });
 
-        if (items.length === 0) return mostrarNotificacion('Indica al menos una cantidad a devolver', 'error');
-        
+        if (items.length === 0) return mostrarNotificacion('Escribe cuántas unidades devuelves', 'error');
+
         const motivo = document.getElementById('dev-motivo').value.trim();
+        const unidades = items.reduce((suma, item) => suma + item.cantidad, 0);
 
         try {
-            mostrarNotificacion('Procesando devolución...', 'success');
+            mostrarNotificacion('Devolviendo...', 'success');
             const { error } = await supabaseClient.rpc('procesar_devolucion', {
                 p_venta_id: comprobanteActual.id,
                 p_usuario: 'Vendedor Demo',
@@ -743,22 +906,23 @@ document.addEventListener('DOMContentLoaded', () => {
             });
             if (error) throw error;
 
-            mostrarNotificacion('Devolución procesada con éxito', 'success');
+            const texto = `Devolviste ${unidades} ${unidades === 1 ? 'unidad' : 'unidades'}`;
+            mostrarNotificacion(ajustado ? texto + ' (no se puede devolver más)' : texto, 'success');
             cerrarModalDevolucion();
-            buscarComprobante(); // Recargar la vista
+            await buscarComprobante(); // Recargar la vista
             cargarProductosAdmin(); // Recargar stock en admin
         } catch (err) {
-            mostrarNotificacion('Error: ' + mensajeError(err), 'error');
+            mostrarNotificacion('No se pudo devolver. ' + mensajeError(err), 'error');
         }
     };
 
     // --- ANULAR VENTA COMPLETA ---
     window.anularVentaCompleta = async function() {
         if (!comprobanteActual) return;
-        if (!confirm('¿Estás seguro de anular esta venta? Se devolverá todo el stock al inventario.')) return;
+        if (!confirm('¿Anular toda la venta? Los productos vuelven al inventario y la venta queda sin efecto.')) return;
 
         try {
-            mostrarNotificacion('Anulando venta...', 'success');
+            mostrarNotificacion('Anulando...', 'success');
             const { error } = await supabaseClient.rpc('anular_venta_completa', {
                 p_venta_id: comprobanteActual.id,
                 p_usuario: 'Vendedor Demo',
@@ -766,11 +930,11 @@ document.addEventListener('DOMContentLoaded', () => {
             });
             if (error) throw error;
 
-            mostrarNotificacion('Venta anulada correctamente', 'success');
+            mostrarNotificacion('Venta anulada. Los productos volvieron al inventario.', 'success');
             buscarComprobante();
             cargarProductosAdmin();
         } catch (err) {
-            mostrarNotificacion('Error: ' + mensajeError(err), 'error');
+            mostrarNotificacion('No se pudo anular. ' + mensajeError(err), 'error');
         }
     };
 });

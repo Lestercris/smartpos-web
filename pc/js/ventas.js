@@ -167,12 +167,12 @@ const VentasModule = (() => {
         set('kpiIngresos', dinero(ingresos));
         set('kpiPromedio', dinero(promedio));
         set('kpiAnuladas', String(anuladas.length));
-        set('kpiAnuladasSub', dinero(montoAnulado) + ' anulados');
+        set('kpiAnuladasSub', dinero(montoAnulado));
 
         const periodo = document.getElementById('ventasPeriodo');
         if (periodo && rangoActual) {
             const { desde, hasta, etiqueta } = rangoActual;
-            periodo.textContent = `${etiqueta}: ${fecha(desde.toISOString())} — ${fecha(hasta.toISOString())} · ${ventas.length} venta(s) registradas`;
+            periodo.textContent = `${etiqueta} · ${ventas.length} ${ventas.length === 1 ? 'venta' : 'ventas'}`;
         }
     }
 
@@ -190,7 +190,7 @@ const VentasModule = (() => {
         unidadesPorVenta = await cargarUnidades(trozo.map(v => v.id));
 
         if (!trozo.length) {
-            tbody.innerHTML = '<tr><td colspan="7" class="empty">No hay ventas en este período</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="7" class="empty">No hay ventas en estas fechas</td></tr>';
         } else {
             tbody.innerHTML = trozo.map(v => {
                 const anulada = esAnulada(v);
@@ -200,7 +200,7 @@ const VentasModule = (() => {
                     <td>${escapar(v.usuario || '-')}</td>
                     <td class="td-num">${unidadesPorVenta[v.id] || 0}</td>
                     <td class="td-num">${dinero(v.total)}</td>
-                    <td><span class="badge-estado ${anulada ? 'badge-anulada' : 'badge-emitida'}">${anulada ? 'ANULADA' : 'EMITIDA'}</span></td>
+                    <td><span class="badge-estado ${anulada ? 'badge-anulada' : 'badge-emitida'}">${anulada ? 'Anulada' : 'Válida'}</span></td>
                     <td class="td-acciones">
                         <button class="btn-icon btn-ver" title="Ver detalle" onclick="verVenta(${v.id})">👁️</button>
                         <button class="btn-icon btn-print" title="Reimprimir ticket" onclick="imprimirVenta(${v.id})">🖨️</button>
@@ -235,8 +235,8 @@ const VentasModule = (() => {
         } catch (err) {
             ventas = [];
             renderKPIs();
-            tbody.innerHTML = `<tr><td colspan="7" class="empty" style="color:#dc2626;">Error al cargar: ${escapar(err.message)}</td></tr>`;
-            toast('Error al cargar ventas: ' + err.message, 'error');
+            tbody.innerHTML = `<tr><td colspan="7" class="empty" style="color:#dc2626;">No se pudieron cargar las ventas</td></tr>`;
+            toast('No se pudieron cargar las ventas', 'error');
         }
     };
 
@@ -263,7 +263,7 @@ const VentasModule = (() => {
             ventaActual = venta;
             mostrarDetalle(venta, detalles);
         } catch (err) {
-            toast('No se pudo cargar el detalle: ' + err.message, 'error');
+            toast('No se pudo abrir la venta', 'error');
         }
     };
 
@@ -273,8 +273,8 @@ const VentasModule = (() => {
         document.getElementById('vd-titulo').textContent = 'Venta ' + folio(venta.id);
         document.getElementById('vd-info').innerHTML = `
             <b>Fecha:</b> ${fecha(venta.created_at)}<br>
-            <b>Usuario:</b> ${escapar(venta.usuario || '-')}<br>
-            <b>Estado:</b> <span class="badge-estado ${anulada ? 'badge-anulada' : 'badge-emitida'}">${anulada ? 'ANULADA' : 'EMITIDA'}</span>
+            <b>Vendedor:</b> ${escapar(venta.usuario || '-')}<br>
+            <b>Estado:</b> <span class="badge-estado ${anulada ? 'badge-anulada' : 'badge-emitida'}">${anulada ? 'Anulada' : 'Válida'}</span>
         `;
 
         const filas = (detalles || []).map(d => {
@@ -294,7 +294,7 @@ const VentasModule = (() => {
                     <td class="td-num">${f.cant}</td>
                     <td class="td-num">${dinero(f.total)}</td>
                 </tr>`).join('')
-            : '<tr><td colspan="4" class="empty">Esta venta no tiene líneas registradas</td></tr>';
+            : '<tr><td colspan="4" class="empty">Esta venta no tiene productos</td></tr>';
 
         document.getElementById('vd-sub').textContent = dinero(base);
         document.getElementById('vd-iva').textContent = dinero(iva);
@@ -338,7 +338,7 @@ const VentasModule = (() => {
             const base = items.reduce((s, i) => s + i.total, 0);
             const total = Number(venta.total || 0);
 
-            if (typeof moduloTicket === 'undefined') return toast('El módulo de ticket aún no está listo', 'error');
+            if (typeof moduloTicket === 'undefined') return toast('El ticket aún no está listo', 'error');
 
             moduloTicket.mostrar({
                 id: venta.id,
@@ -350,7 +350,7 @@ const VentasModule = (() => {
                 total
             });
         } catch (err) {
-            toast('No se pudo generar el ticket: ' + err.message, 'error');
+            toast('No se pudo imprimir el ticket', 'error');
         }
     }
 
@@ -367,8 +367,8 @@ const VentasModule = (() => {
     };
 
     window.exportarVentasExcel = function () {
-        if (!ventas.length) return toast('No hay ventas en este período', 'error');
-        if (typeof XLSX === 'undefined') return toast('La librería de Excel no está disponible', 'error');
+        if (!ventas.length) return toast('No hay ventas para descargar', 'error');
+        if (typeof XLSX === 'undefined') return toast('El Excel no está disponible', 'error');
 
         try {
             const emitidas = ventas.filter(v => !esAnulada(v));
@@ -381,20 +381,20 @@ const VentasModule = (() => {
                 ['Período', `${rango.etiqueta} (${ymd(rango.desde)} a ${ymd(rango.hasta)})`],
                 ['Generado', new Date().toLocaleString()],
                 [],
-                ['Ventas emitidas', emitidas.length],
-                ['Ingresos', Number(ingresos.toFixed(2))],
-                ['Ticket promedio', Number((emitidas.length ? ingresos / emitidas.length : 0).toFixed(2))],
-                ['Ventas anuladas', anuladas.length],
-                ['Monto anulado', Number(anuladas.reduce((s, v) => s + Number(v.total || 0), 0).toFixed(2))]
+                ['Ventas', emitidas.length],
+                ['Dinero vendido', Number(ingresos.toFixed(2))],
+                ['Venta media', Number((emitidas.length ? ingresos / emitidas.length : 0).toFixed(2))],
+                ['Anuladas', anuladas.length],
+                ['Dinero anulado', Number(anuladas.reduce((s, v) => s + Number(v.total || 0), 0).toFixed(2))]
             ]);
             resumen['!cols'] = [{ wch: 22 }, { wch: 38 }];
 
             const filas = ventas.map(v => ({
-                Folio: folio(v.id),
+                Ticket: folio(v.id),
                 Fecha: new Date(v.created_at).toLocaleString(),
-                Usuario: v.usuario || '',
+                Vendedor: v.usuario || '',
                 Total: Number(v.total || 0),
-                Estado: esAnulada(v) ? 'ANULADA' : 'EMITIDA'
+                Estado: esAnulada(v) ? 'Anulada' : 'Válida'
             }));
             const hojaVentas = XLSX.utils.json_to_sheet(filas);
             hojaVentas['!cols'] = [{ wch: 12 }, { wch: 22 }, { wch: 22 }, { wch: 12 }, { wch: 12 }];
@@ -404,9 +404,9 @@ const VentasModule = (() => {
             XLSX.utils.book_append_sheet(libro, hojaVentas, 'Ventas');
             XLSX.writeFile(libro, `Ventas_${ymd(rango.desde)}_a_${ymd(rango.hasta)}.xlsx`);
 
-            toast('Reporte exportado', 'success');
+            toast('Excel descargado', 'success');
         } catch (err) {
-            toast('Error al exportar: ' + err.message, 'error');
+            toast('No se pudo descargar el Excel', 'error');
         }
     };
 

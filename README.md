@@ -40,7 +40,7 @@ movil/
 | --- | --- |
 | POS | Carrito por código de barras o teclado, cantidades, IVA por producto y total |
 | Caja | Apertura/cierre de turno, monto inicial, arqueo y diferencia (las ventas anuladas no suman) |
-| Productos | Alta, imagen, stock mínimo, precios, margen, IVA, importar/exportar Excel, etiquetas |
+| Productos | Alta, imagen, stock mínimo, precios, margen, IVA, edición completa con vista grande de imagen, importar/exportar Excel, etiquetas |
 | Comprobantes | Búsqueda por escáner o folio, devoluciones parciales y anulación completa |
 | Ventas | Reportes por período, KPIs, detalle, reimpresión de ticket y exportación a Excel |
 | Clientes / Proveedores | Altas y bajas con tipo y número de documento |
@@ -67,9 +67,12 @@ Funciones RPC: `realizar_venta`, `procesar_devolucion`, `anular_venta_completa`.
 
 Bucket de Storage: `productos-imagenes`.
 
-Los scripts de corrección de esquema están en [`sql/`](sql/). Hay que ejecutarlos en **Supabase → SQL Editor**:
+Los scripts de corrección de esquema están en [`sql/`](sql/). Hay que ejecutarlos en **Supabase → SQL Editor**, en orden:
 
-- `sql/001_fix_ventas_estado.sql` — añade `ventas.estado` (la necesitan la anulación, el arqueo y los reportes).
+1. `sql/001_fix_ventas_estado.sql` — añade `ventas.estado` (la necesitan la anulación, el arqueo y los reportes).
+2. `sql/002_rls_lectura_venta_detalles.sql` — permite leer `venta_detalles` desde el navegador cuando RLS está activo (sin esto el comprobante sale sin productos).
+3. `sql/003_limpiar_duplicados.sql` — borra líneas duplicadas y crea un índice único `(venta_id, producto_id)` para que no se repitan.
+4. `sql/004_rls_lectura_devoluciones.sql` — permite leer `devoluciones` y `devolucion_detalles` desde el navegador (sin esto, una devolución se guarda pero el comprobante sigue mostrando 0 devuelto).
 
 > La clave `anon` es pública por diseño; la seguridad real depende de las políticas RLS configuradas en Supabase.
 
