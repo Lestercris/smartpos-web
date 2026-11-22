@@ -357,6 +357,16 @@ main { padding: 24px; max-width: 1600px; margin: 0 auto; }
     outline: none;
 }
 .input-row input:focus { border-color: #4f46e5; box-shadow: 0 0 0 3px rgba(79,70,229,0.1); }
+.input-row select {
+    padding: 10px 12px;
+    border: 1px solid #d1d5db;
+    border-radius: 8px;
+    font-size: 13px;
+    background: white;
+    outline: none;
+    min-width: 0;
+}
+.input-row select:focus { border-color: #4f46e5; box-shadow: 0 0 0 3px rgba(79,70,229,0.1); }
 .input-row button { flex: 0 0 auto; height: 40px; padding: 0 16px; }
 
 .list-group { list-style: none; padding: 0; max-height: 250px; overflow-y: auto; flex: 1; margin-top: 10px; }

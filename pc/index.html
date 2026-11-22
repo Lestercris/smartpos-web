@@ -415,6 +415,7 @@
                 <div class="ticket-totales" style="margin-top: 16px;">
                     <div class="ticket-row"><span>Subtotal:</span><span id="vd-sub">$0.00</span></div>
                     <div class="ticket-row"><span>IVA:</span><span id="vd-iva">$0.00</span></div>
+                    <div class="ticket-row" id="vd-desc-row" style="display:none;"><span>Descuento:</span><span id="vd-desc">$0.00</span></div>
                     <div class="ticket-row ticket-total"><span>TOTAL:</span><span id="vd-total">$0.00</span></div>
                 </div>
 
@@ -438,6 +439,18 @@
                     <select id="cobroCliente">
                         <option value="">Consumidor final</option>
                     </select>
+                </div>
+
+                <div class="form-field mb-20">
+                    <label>Descuento</label>
+                    <div class="input-row">
+                        <select id="cobroDescuentoTipo" onchange="actualizarDescuento()">
+                            <option value="NINGUNO">Sin descuento</option>
+                            <option value="PORCENTAJE">Porcentaje (%)</option>
+                            <option value="IMPORTE">Importe ($)</option>
+                        </select>
+                        <input type="number" id="cobroDescuento" min="0" step="0.01" placeholder="0" oninput="actualizarDescuento()">
+                    </div>
                 </div>
 
                 <div class="cobro-metodos">

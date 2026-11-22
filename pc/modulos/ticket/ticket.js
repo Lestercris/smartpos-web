@@ -98,6 +98,17 @@ const moduloTicket = {
         document.getElementById('tk-iva').textContent = '$' + venta.iva.toFixed(2);
         document.getElementById('tk-total').textContent = '$' + venta.total.toFixed(2);
 
+        const descuento = Number(venta.descuento || 0);
+        const filaDescuento = document.getElementById('tk-descuento-row');
+        if (filaDescuento) {
+            if (descuento > 0) {
+                document.getElementById('tk-descuento').textContent = '-$' + descuento.toFixed(2);
+                filaDescuento.style.display = 'flex';
+            } else {
+                filaDescuento.style.display = 'none';
+            }
+        }
+
         // 3b. Forma de pago y vuelto (si la venta los tiene)
         const filaPago = document.getElementById('tk-pago-row');
         const filaRecibido = document.getElementById('tk-recibido-row');

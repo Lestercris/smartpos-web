@@ -688,7 +688,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
         document.getElementById('cobroTotal').textContent = '$' + total.toFixed(2);
         document.getElementById('cobroRecibido').value = '';
+        document.getElementById('cobroDescuentoTipo').value = 'NINGUNO';
+        document.getElementById('cobroDescuento').value = '';
         window.elegirMetodoPago('EFECTIVO');
+        window.actualizarDescuento();
         cargarClientesVenta();
         document.getElementById('modalCobro').classList.remove('hidden');
 
@@ -712,10 +715,39 @@ document.addEventListener('DOMContentLoaded', () => {
         window.actualizarVuelto();
     };
 
+    function datosDescuento() {
+        if (!cobroPendiente) return { monto: 0, totalFinal: 0 };
+
+        const tipo = document.getElementById('cobroDescuentoTipo').value;
+        const valor = parseFloat(document.getElementById('cobroDescuento').value) || 0;
+
+        let monto = 0;
+        if (tipo === 'PORCENTAJE') monto = cobroPendiente.total * (Math.min(Math.max(valor, 0), 100) / 100);
+        else if (tipo === 'IMPORTE') monto = valor;
+
+        monto = Math.min(Math.max(monto, 0), cobroPendiente.total);
+        monto = Number(monto.toFixed(2));
+
+        return { monto, totalFinal: Number((cobroPendiente.total - monto).toFixed(2)) };
+    }
+
+    window.actualizarDescuento = function () {
+        if (!cobroPendiente) return;
+
+        const tipo = document.getElementById('cobroDescuentoTipo').value;
+        const campo = document.getElementById('cobroDescuento');
+        campo.disabled = tipo === 'NINGUNO';
+        if (tipo === 'NINGUNO') campo.value = '';
+
+        const { totalFinal } = datosDescuento();
+        document.getElementById('cobroTotal').textContent = '$' + totalFinal.toFixed(2);
+        window.actualizarVuelto();
+    };
+
     window.actualizarVuelto = function () {
         if (!cobroPendiente) return;
 
-        const total = cobroPendiente.total;
+        const { totalFinal: total } = datosDescuento();
         const caja = document.getElementById('cobroVuelto');
         const boton = document.getElementById('btnConfirmarCobro');
         const recibido = parseFloat(document.getElementById('cobroRecibido').value) || 0;
@@ -748,7 +780,8 @@ document.addEventListener('DOMContentLoaded', () => {
     window.confirmarCobro = async function () {
         if (!cobroPendiente) return;
 
-        const { items, subtotal, iva, total } = cobroPendiente;
+        const { items, subtotal, iva } = cobroPendiente;
+        const { monto: descuento, totalFinal: total } = datosDescuento();
 
         const selectCliente = document.getElementById('cobroCliente');
         const clienteId = selectCliente && selectCliente.value ? Number(selectCliente.value) : null;
@@ -798,6 +831,14 @@ document.addEventListener('DOMContentLoaded', () => {
                 else console.warn('Falta ejecutar sql/008 para guardar el total con IVA.');
             }
 
+            if (descuento > 0) {
+                const guardadoDescuento = await supabaseClient.rpc('registrar_descuento', {
+                    p_venta_id: data.venta_id,
+                    p_descuento: descuento
+                });
+                if (guardadoDescuento.error) console.warn('No se pudo guardar el descuento:', guardadoDescuento.error.message);
+            }
+
             if (clienteId) {
                 const guardado = await supabaseClient.rpc('registrar_cliente', {
                     p_venta_id: data.venta_id,
@@ -837,6 +878,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         subtotal,
                         iva,
                         total,
+                        descuento,
                         metodo_pago: metodoPago,
                         monto_recibido: recibido,
                         vuelto,

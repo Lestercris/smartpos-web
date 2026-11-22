@@ -83,6 +83,7 @@ Los scripts de corrección de esquema están en [`sql/`](sql/). Hay que ejecutar
 11. `sql/011_permisos_tablas.sql` — permisos y políticas RLS de las tablas nuevas (`promociones`, `movimientos_stock`, `smartpos_config`).
 12. `sql/012_cliente_venta.sql` — cliente asociado a cada venta (`cliente_id` y `cliente_nombre`).
 13. `sql/013_promos_nxm.sql` — tipo de promoción y campos `lleva`/`paga` para 2x1, 3x2, etc.
+14. `sql/014_descuento_venta.sql` — descuento manual por venta (`descuento`).
 
 > La clave `anon` es pública por diseño; la seguridad real depende de las políticas RLS configuradas en Supabase.
 

@@ -278,7 +278,8 @@ const VentasModule = (() => {
 
         const base = filas.reduce((s, f) => s + f.total, 0);
         const total = Number(venta.total || 0);
-        const iva = Math.max(0, total - base);
+        const descuento = Number(venta.descuento || 0);
+        const iva = Math.max(0, total - base + descuento);
 
         document.getElementById('vd-body').innerHTML = filas.length
             ? filas.map(f => `<tr>
@@ -292,6 +293,16 @@ const VentasModule = (() => {
         document.getElementById('vd-sub').textContent = dinero(base);
         document.getElementById('vd-iva').textContent = dinero(iva);
         document.getElementById('vd-total').textContent = dinero(total);
+
+        const filaDescuento = document.getElementById('vd-desc-row');
+        if (filaDescuento) {
+            if (descuento > 0) {
+                document.getElementById('vd-desc').textContent = '-' + dinero(descuento);
+                filaDescuento.style.display = 'flex';
+            } else {
+                filaDescuento.style.display = 'none';
+            }
+        }
 
         const btnDevolver = document.getElementById('vd-btnDevolver');
         if (btnDevolver) btnDevolver.style.display = anulada ? 'none' : 'inline-flex';
@@ -344,6 +355,7 @@ const VentasModule = (() => {
                 metodo_pago: venta.metodo_pago,
                 monto_recibido: venta.monto_recibido,
                 vuelto: venta.vuelto,
+                descuento: venta.descuento,
                 cliente: venta.cliente_nombre
             });
         } catch (err) {
