@@ -80,6 +80,7 @@ Los scripts de corrección de esquema están en [`sql/`](sql/). Hay que ejecutar
 8. `sql/008_registrar_cobro.sql` — `registrar_cobro`: guarda el total real cobrado (con IVA) y la forma de pago en una sola llamada.
 9. `sql/009_configuracion_iva.sql` — tabla `smartpos_config` para guardar el porcentaje de IVA editable desde Ajustes.
 10. `sql/010_promociones.sql` — tabla `promociones` (rebajas por producto con fechas) y función para dejar el precio de las líneas en lo realmente cobrado.
+11. `sql/011_permisos_tablas.sql` — permisos y políticas RLS de las tablas nuevas (`promociones`, `movimientos_stock`, `smartpos_config`).
 
 > La clave `anon` es pública por diseño; la seguridad real depende de las políticas RLS configuradas en Supabase.
 
