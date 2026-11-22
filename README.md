@@ -43,7 +43,7 @@ movil/
 | Productos | Alta, imagen, stock mínimo, precios, margen, IVA, edición con vista grande de imagen, duplicar, entrada/salida de stock con historial, importar/exportar Excel, etiquetas |
 | Comprobantes | Búsqueda por escáner o folio, devoluciones parciales y anulación completa |
 | Ventas | Reportes por período, KPIs, detalle, reimpresión de ticket y exportación a Excel |
-| Promociones | Rebajas por producto o para todos, con fechas; el POS aplica la mejor vigente y guarda el precio rebajado |
+| Promociones | Rebajas por producto o para todos, con fechas: descuento % o lleva N paga M (2x1, 3x2); el POS aplica la mejor vigente |
 | Clientes / Proveedores | Altas y bajas con tipo y número de documento |
 | Ajustes | Categorías, subcategorías, ubicaciones, unidades de medida, tipos de documento, IVA y datos del negocio |
 | Escáner móvil | Envía el código al PC en tiempo real; los folios `T-xxxxxx` abren el comprobante |
@@ -82,6 +82,7 @@ Los scripts de corrección de esquema están en [`sql/`](sql/). Hay que ejecutar
 10. `sql/010_promociones.sql` — tabla `promociones` (rebajas por producto con fechas) y función para dejar el precio de las líneas en lo realmente cobrado.
 11. `sql/011_permisos_tablas.sql` — permisos y políticas RLS de las tablas nuevas (`promociones`, `movimientos_stock`, `smartpos_config`).
 12. `sql/012_cliente_venta.sql` — cliente asociado a cada venta (`cliente_id` y `cliente_nombre`).
+13. `sql/013_promos_nxm.sql` — tipo de promoción y campos `lleva`/`paga` para 2x1, 3x2, etc.
 
 > La clave `anon` es pública por diseño; la seguridad real depende de las políticas RLS configuradas en Supabase.
 

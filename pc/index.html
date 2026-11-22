@@ -195,7 +195,15 @@
                         <div class="form-grid">
                             <div class="form-field"><label>Nombre</label><input type="text" id="promoNombre" placeholder="Ej: Oferta de fin de semana"></div>
                             <div class="form-field"><label>Producto</label><select id="promoProducto"><option value="">Todos los productos</option></select></div>
-                            <div class="form-field"><label>Descuento (%)</label><input type="number" id="promoDescuento" min="1" max="100" step="0.01" placeholder="20"></div>
+                            <div class="form-field"><label>Tipo</label><select id="promoTipo" onchange="cambiarTipoPromo(this.value)"><option value="PORCENTAJE">Descuento %</option><option value="NXM">Lleva N paga M</option></select></div>
+                            <div class="form-field" id="promoDescuentoCampo"><label>Descuento (%)</label><input type="number" id="promoDescuento" min="1" max="100" step="0.01" placeholder="20"></div>
+                            <div class="form-field hidden" id="promoNxmCampo">
+                                <label>Lleva / Paga</label>
+                                <div class="input-row">
+                                    <input type="number" id="promoLleva" min="2" placeholder="Lleva (2)" title="Lleva (unidades)">
+                                    <input type="number" id="promoPaga" min="1" placeholder="Paga (1)" title="Paga (unidades)">
+                                </div>
+                            </div>
                             <div class="form-field"><label>Desde (opcional)</label><input type="date" id="promoDesde"></div>
                             <div class="form-field"><label>Hasta (opcional)</label><input type="date" id="promoHasta"></div>
                             <div class="form-field btn-field"><button class="btn btn-primary" onclick="guardarPromo()">+ Añadir promoción</button></div>

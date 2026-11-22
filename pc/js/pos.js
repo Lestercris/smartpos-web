@@ -188,6 +188,29 @@ document.addEventListener('DOMContentLoaded', () => {
         return vigentes[0];
     }
 
+    // En las promos de porcentaje el precio ya viene rebajado; en las NXM se
+    // calcula el total de la línea según cuántas unidades se lleven.
+    function totalLinea(item) {
+        if (item.promo_tipo === 'NXM' && Number(item.lleva) >= 2 && Number(item.paga) >= 1 && Number(item.paga) < Number(item.lleva)) {
+            const lleva = Number(item.lleva);
+            const paga = Number(item.paga);
+            const grupos = Math.floor(item.cantidad / lleva);
+            const sueltas = item.cantidad % lleva;
+            return (grupos * paga + sueltas) * item.precio;
+        }
+        return item.precio * item.cantidad;
+    }
+
+    function etiquetaPromo(item) {
+        if (!item.promo_tipo) return '';
+        if (item.promo_tipo === 'NXM') {
+            return item.cantidad >= Number(item.lleva)
+                ? ` <span class="badge-promo">${item.lleva}x${item.paga}</span>`
+                : '';
+        }
+        return ` <span class="badge-promo">-${item.descuento}%</span>`;
+    }
+
     function renderPromos() {
         const tbody = document.getElementById('promoTableBody');
         if (!tbody) return;
@@ -215,7 +238,7 @@ document.addEventListener('DOMContentLoaded', () => {
             return `<tr>
                 <td>${escaparTexto(promo.nombre)}</td>
                 <td>${escaparTexto(producto)}</td>
-                <td class="td-num">${Number(promo.descuento)}%</td>
+                <td class="td-num">${promo.tipo === 'NXM' ? `${promo.lleva}x${promo.paga}` : `${Number(promo.descuento)}%`}</td>
                 <td>${promo.fecha_inicio || '-'}</td>
                 <td>${promo.fecha_fin || '-'}</td>
                 <td>${estado}</td>
@@ -239,29 +262,56 @@ document.addEventListener('DOMContentLoaded', () => {
         renderPromos();
     }
 
+    window.cambiarTipoPromo = function (tipo) {
+        const esNxm = tipo === 'NXM';
+        document.getElementById('promoDescuentoCampo').classList.toggle('hidden', esNxm);
+        document.getElementById('promoNxmCampo').classList.toggle('hidden', !esNxm);
+    };
+
     window.guardarPromo = async function () {
         const nombre = document.getElementById('promoNombre').value.trim();
         const producto_id = document.getElementById('promoProducto').value || null;
-        const descuento = parseFloat(document.getElementById('promoDescuento').value);
+        const tipo = document.getElementById('promoTipo').value || 'PORCENTAJE';
         const fecha_inicio = document.getElementById('promoDesde').value || null;
         const fecha_fin = document.getElementById('promoHasta').value || null;
 
         if (!nombre) return mostrarNotificacion('Escribe un nombre para la promoción', 'error');
-        if (isNaN(descuento) || descuento <= 0 || descuento > 100) return mostrarNotificacion('El descuento debe estar entre 1 y 100', 'error');
         if (fecha_inicio && fecha_fin && fecha_fin < fecha_inicio) return mostrarNotificacion('La fecha final no puede ser anterior a la inicial', 'error');
 
+        let descuento;
+        let lleva = null;
+        let paga = null;
+
+        if (tipo === 'NXM') {
+            lleva = parseInt(document.getElementById('promoLleva').value);
+            paga = parseInt(document.getElementById('promoPaga').value);
+
+            if (isNaN(lleva) || isNaN(paga) || lleva < 2 || paga < 1 || paga >= lleva) {
+                return mostrarNotificacion('Escribe por ejemplo: lleva 2, paga 1', 'error');
+            }
+
+            descuento = Number(((1 - paga / lleva) * 100).toFixed(2));
+        } else {
+            descuento = parseFloat(document.getElementById('promoDescuento').value);
+            if (isNaN(descuento) || descuento <= 0 || descuento > 100) {
+                return mostrarNotificacion('El descuento debe estar entre 1 y 100', 'error');
+            }
+        }
+
         const { error } = await supabaseClient.from('promociones').insert([{
-            nombre, producto_id, descuento, fecha_inicio, fecha_fin, activa: true
+            nombre, producto_id, descuento, fecha_inicio, fecha_fin, activa: true, tipo, lleva, paga
         }]);
 
         if (error) return mostrarNotificacion('No se pudo guardar. ' + mensajeError(error), 'error');
 
-        ['promoNombre', 'promoDescuento', 'promoDesde', 'promoHasta'].forEach(id => {
+        ['promoNombre', 'promoDescuento', 'promoDesde', 'promoHasta', 'promoLleva', 'promoPaga'].forEach(id => {
             const campo = document.getElementById(id);
             if (campo) campo.value = '';
         });
         const select = document.getElementById('promoProducto');
         if (select) select.value = '';
+        const tipoSelect = document.getElementById('promoTipo');
+        if (tipoSelect) { tipoSelect.value = 'PORCENTAJE'; cambiarTipoPromo('PORCENTAJE'); }
 
         mostrarNotificacion('Promoción creada', 'success');
         await cargarPromos();
@@ -503,7 +553,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
         const promo = promoVigente(producto.id);
         const precioBase = Number(producto.precio);
-        const precio = promo ? Number((precioBase * (1 - Number(promo.descuento) / 100)).toFixed(2)) : precioBase;
+        const esNxm = promo && promo.tipo === 'NXM' && Number(promo.lleva) >= 2 && Number(promo.paga) >= 1;
+        const precio = (promo && !esNxm)
+            ? Number((precioBase * (1 - Number(promo.descuento) / 100)).toFixed(2))
+            : precioBase;
 
         const existe = carrito.find(item => item.id === producto.id);
         if (existe) existe.cantidad++;
@@ -515,6 +568,9 @@ document.addEventListener('DOMContentLoaded', () => {
             precio_original: precioBase,
             descuento: promo ? Number(promo.descuento) : 0,
             promo: promo ? promo.nombre : null,
+            promo_tipo: promo ? (esNxm ? 'NXM' : 'PORCENTAJE') : null,
+            lleva: esNxm ? Number(promo.lleva) : null,
+            paga: esNxm ? Number(promo.paga) : null,
             cantidad: 1,
             aplica_iva: producto.aplica_iva
         });
@@ -529,10 +585,10 @@ document.addEventListener('DOMContentLoaded', () => {
             const tr = document.createElement('tr');
             tr.innerHTML = `
                 <td>${item.codigo}</td>
-                <td>${item.nombre}${item.descuento ? ` <span class="badge-promo">-${item.descuento}%</span>` : ''}</td>
-                <td>$${item.precio.toFixed(2)}${item.descuento ? ` <s class="precio-tachado">$${item.precio_original.toFixed(2)}</s>` : ''}</td>
+                <td>${item.nombre}${etiquetaPromo(item)}</td>
+                <td>$${item.precio.toFixed(2)}${item.promo_tipo === 'PORCENTAJE' && item.descuento ? ` <s class="precio-tachado">$${item.precio_original.toFixed(2)}</s>` : ''}</td>
                 <td><input type="number" class="input-cantidad" value="${item.cantidad}" min="1" onchange="actualizarCantidad(${index}, this.value)"></td>
-                <td>$${(item.precio * item.cantidad).toFixed(2)}</td>
+                <td>$${totalLinea(item).toFixed(2)}</td>
                 <td><button class="btn-eliminar" onclick="eliminarItem(${index})">X</button></td>
             `; cartBody.appendChild(tr);
         });
@@ -542,8 +598,8 @@ document.addEventListener('DOMContentLoaded', () => {
     function actualizarTotales() {
         let sGrav = 0, sExento = 0;
         carrito.forEach(item => {
-            const totalLinea = item.precio * item.cantidad;
-            if (item.aplica_iva) sGrav += totalLinea; else sExento += totalLinea;
+            const linea = totalLinea(item);
+            if (item.aplica_iva) sGrav += linea; else sExento += linea;
         });
         const subtotal = sGrav + sExento, iva = sGrav * IVA_RATE, total = subtotal + iva;
         document.getElementById('tSub').textContent = '$' + subtotal.toFixed(2);
@@ -562,7 +618,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!turnoActual) return mostrarNotificacion('Debes abrir la caja primero', 'error');
         if (carrito.length === 0) return mostrarNotificacion('El carrito está vacío', 'error');
 
-        const carritoCopia = carrito.map(item => ({ ...item, total: item.precio * item.cantidad }));
+        const carritoCopia = carrito.map(item => ({ ...item, total: totalLinea(item) }));
         let sGrav = 0, sExento = 0;
         carritoCopia.forEach(item => { if (item.aplica_iva) sGrav += item.total; else sExento += item.total; });
         const subtotal = sGrav + sExento, iva = sGrav * IVA_RATE, total = subtotal + iva;
@@ -695,7 +751,10 @@ document.addEventListener('DOMContentLoaded', () => {
             // El precio de cada línea debe ser el rebajado que se cobró
             const precios = await supabaseClient.rpc('actualizar_precios_venta', {
                 p_venta_id: data.venta_id,
-                p_items: items.map(item => ({ id: item.id, precio: item.precio }))
+                p_items: items.map(item => ({
+                    id: item.id,
+                    precio: item.cantidad ? Number((item.total / item.cantidad).toFixed(4)) : item.precio
+                }))
             });
             if (precios.error) console.warn('No se pudieron actualizar los precios de las líneas:', precios.error.message);
 
@@ -710,7 +769,9 @@ document.addEventListener('DOMContentLoaded', () => {
                         usuario: 'Vendedor Demo',
                         items: items.map(item => ({
                             ...item,
-                            nombre: item.descuento ? `${item.nombre} (-${item.descuento}%)` : item.nombre
+                            nombre: item.promo_tipo === 'NXM'
+                                ? `${item.nombre} (${item.lleva}x${item.paga})`
+                                : (item.descuento ? `${item.nombre} (-${item.descuento}%)` : item.nombre)
                         })),
                         subtotal,
                         iva,
