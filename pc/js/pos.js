@@ -399,6 +399,12 @@ document.addEventListener('DOMContentLoaded', () => {
         const { error } = await supabaseClient.from('productos').update({ activo: false }).eq('id', id);
         if (error) return mostrarNotificacion('No se pudo quitar. ' + mensajeError(error), 'error');
 
+        // Comprobamos que el cambio se guardó de verdad (RLS puede descartarlo sin error)
+        const { data: comprobado } = await supabaseClient.from('productos').select('activo').eq('id', id).single();
+        if (!comprobado || comprobado.activo !== false) {
+            return mostrarNotificacion('La base de datos no permitió quitar el producto.', 'error');
+        }
+
         mostrarNotificacion('Producto quitado del listado', 'success');
         cargarProductosAdmin();
     };
@@ -406,6 +412,11 @@ document.addEventListener('DOMContentLoaded', () => {
     window.restaurarProducto = async function (id) {
         const { error } = await supabaseClient.from('productos').update({ activo: true }).eq('id', id);
         if (error) return mostrarNotificacion('No se pudo restaurar. ' + mensajeError(error), 'error');
+
+        const { data: comprobado } = await supabaseClient.from('productos').select('activo').eq('id', id).single();
+        if (!comprobado || comprobado.activo !== true) {
+            return mostrarNotificacion('La base de datos no permitió restaurar el producto.', 'error');
+        }
 
         mostrarNotificacion('Producto restaurado', 'success');
         cargarProductosAdmin();
