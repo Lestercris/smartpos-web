@@ -2,12 +2,13 @@ document.addEventListener('DOMContentLoaded', () => {
     
     // ==================== VARIABLES GLOBALES ====================
     let carrito = [];
-    const IVA_RATE = (typeof SMARTPOS_CONFIG !== 'undefined' && SMARTPOS_CONFIG.IVA_RATE) ? SMARTPOS_CONFIG.IVA_RATE : 0.18;
+    let IVA_RATE = (typeof SMARTPOS_CONFIG !== 'undefined' && SMARTPOS_CONFIG.IVA_RATE) ? SMARTPOS_CONFIG.IVA_RATE : 0.18;
     let turnoActual = null; // Variable global para saber si hay caja abierta
     
     let listaCategorias = [], listaProveedores = [], listaUbicaciones = [], listaUMedidas = [], listaTiposDoc = [];
     let todosLosProductos = [], productosFiltrados = [], paginaActual = 1, itemsPorPagina = 10;
     let mostrarOcultos = false;
+    let listaPromociones = [];
 
     const inputCode = document.getElementById('posCode');
     const cartBody = document.getElementById('cartBody');
@@ -15,6 +16,207 @@ document.addEventListener('DOMContentLoaded', () => {
     // ==================== INICIALIZACIÓN ====================
     cargarDatosIniciales();
     verificarEstadoCaja(); 
+    cargarConfiguracion();
+    cargarPromociones();
+
+    // IVA guardado en la base (editable desde Ajustes)
+    async function cargarConfiguracion() {
+        try {
+            const { data, error } = await supabaseClient
+                .from('smartpos_config')
+                .select('valor')
+                .eq('clave', 'iva_rate')
+                .limit(1);
+
+            if (error || !data || data.length === 0) return;
+
+            const rate = parseFloat(data[0].valor);
+            if (isNaN(rate) || rate < 0 || rate > 1) return;
+
+            IVA_RATE = rate;
+            if (typeof SMARTPOS_CONFIG !== 'undefined') SMARTPOS_CONFIG.IVA_RATE = rate;
+
+            const input = document.getElementById('ivaPorcentaje');
+            if (input) input.value = String(Number((rate * 100).toFixed(2)));
+            if (todosLosProductos.length) filtrarProductos();
+        } catch (err) {
+            console.warn('No se pudo cargar la configuración del IVA:', err);
+        }
+    }
+
+    window.guardarIva = async function () {
+        const valor = parseFloat(document.getElementById('ivaPorcentaje').value);
+
+        if (isNaN(valor) || valor < 0 || valor > 100) {
+            return mostrarNotificacion('Escribe un porcentaje entre 0 y 100', 'error');
+        }
+
+        const { error } = await supabaseClient
+            .from('smartpos_config')
+            .upsert({ clave: 'iva_rate', valor: String(valor / 100) }, { onConflict: 'clave' });
+
+        if (error) return mostrarNotificacion('No se pudo guardar el IVA. ' + mensajeError(error), 'error');
+
+        IVA_RATE = valor / 100;
+        if (typeof SMARTPOS_CONFIG !== 'undefined') SMARTPOS_CONFIG.IVA_RATE = IVA_RATE;
+
+        actualizarTotales();
+        if (todosLosProductos.length) filtrarProductos();
+        mostrarNotificacion(`IVA guardado: ${valor}%`, 'success');
+    };
+
+    // ==================== PROMOCIONES ====================
+    function hoyYmd() {
+        const hoy = new Date();
+        return `${hoy.getFullYear()}-${String(hoy.getMonth() + 1).padStart(2, '0')}-${String(hoy.getDate()).padStart(2, '0')}`;
+    }
+
+    async function cargarPromociones() {
+        try {
+            const { data, error } = await supabaseClient
+                .from('promociones')
+                .select('*')
+                .order('created_at', { ascending: false });
+
+            if (error) return;
+            listaPromociones = data || [];
+        } catch (err) {
+            console.warn('No se pudieron cargar las promociones:', err);
+        }
+    }
+
+    function promoVigente(productoId) {
+        const hoy = hoyYmd();
+
+        const vigentes = (listaPromociones || []).filter(promo => {
+            if (promo.activa === false) return false;
+            if (promo.fecha_inicio && String(promo.fecha_inicio) > hoy) return false;
+            if (promo.fecha_fin && String(promo.fecha_fin) < hoy) return false;
+            return promo.producto_id == null || Number(promo.producto_id) === Number(productoId);
+        });
+
+        if (vigentes.length === 0) return null;
+
+        vigentes.sort((a, b) => {
+            const especificoA = a.producto_id != null ? 1 : 0;
+            const especificoB = b.producto_id != null ? 1 : 0;
+            return (especificoB - especificoA) || (Number(b.descuento) - Number(a.descuento));
+        });
+
+        return vigentes[0];
+    }
+
+    function renderPromos() {
+        const tbody = document.getElementById('promoTableBody');
+        if (!tbody) return;
+
+        const hoy = hoyYmd();
+
+        if (!listaPromociones.length) {
+            tbody.innerHTML = '<tr><td colspan="7" class="empty">No hay promociones</td></tr>';
+            return;
+        }
+
+        tbody.innerHTML = listaPromociones.map(promo => {
+            const producto = promo.producto_id
+                ? ((todosLosProductos.find(p => p.id === promo.producto_id) || {}).nombre || 'Producto')
+                : 'Todos los productos';
+
+            const vigente = promo.activa !== false
+                && (!promo.fecha_inicio || String(promo.fecha_inicio) <= hoy)
+                && (!promo.fecha_fin || String(promo.fecha_fin) >= hoy);
+
+            const estado = promo.activa === false
+                ? '<span class="badge-estado badge-anulada">Pausada</span>'
+                : (vigente ? '<span class="badge-estado badge-emitida">Activa</span>' : '<span class="badge-estado badge-devuelta">Vencida</span>');
+
+            return `<tr>
+                <td>${escaparTexto(promo.nombre)}</td>
+                <td>${escaparTexto(producto)}</td>
+                <td class="td-num">${Number(promo.descuento)}%</td>
+                <td>${promo.fecha_inicio || '-'}</td>
+                <td>${promo.fecha_fin || '-'}</td>
+                <td>${estado}</td>
+                <td class="td-acciones">
+                    <button class="btn-icon btn-ver" title="${promo.activa === false ? 'Activar' : 'Pausar'}" onclick="alternarPromo(${promo.id})">${promo.activa === false ? '▶️' : '⏸️'}</button>
+                    <button class="btn-icon btn-danger" title="Eliminar" onclick="eliminarPromo(${promo.id})">🗑️</button>
+                </td>
+            </tr>`;
+        }).join('');
+    }
+
+    async function cargarPromos() {
+        await cargarPromociones();
+
+        const select = document.getElementById('promoProducto');
+        if (select) {
+            select.innerHTML = '<option value="">Todos los productos</option>' +
+                todosLosProductos.map(p => `<option value="${p.id}">${escaparTexto(p.nombre)}</option>`).join('');
+        }
+
+        renderPromos();
+    }
+
+    window.guardarPromo = async function () {
+        const nombre = document.getElementById('promoNombre').value.trim();
+        const producto_id = document.getElementById('promoProducto').value || null;
+        const descuento = parseFloat(document.getElementById('promoDescuento').value);
+        const fecha_inicio = document.getElementById('promoDesde').value || null;
+        const fecha_fin = document.getElementById('promoHasta').value || null;
+
+        if (!nombre) return mostrarNotificacion('Escribe un nombre para la promoción', 'error');
+        if (isNaN(descuento) || descuento <= 0 || descuento > 100) return mostrarNotificacion('El descuento debe estar entre 1 y 100', 'error');
+        if (fecha_inicio && fecha_fin && fecha_fin < fecha_inicio) return mostrarNotificacion('La fecha final no puede ser anterior a la inicial', 'error');
+
+        const { error } = await supabaseClient.from('promociones').insert([{
+            nombre, producto_id, descuento, fecha_inicio, fecha_fin, activa: true
+        }]);
+
+        if (error) return mostrarNotificacion('No se pudo guardar. ' + mensajeError(error), 'error');
+
+        ['promoNombre', 'promoDescuento', 'promoDesde', 'promoHasta'].forEach(id => {
+            const campo = document.getElementById(id);
+            if (campo) campo.value = '';
+        });
+        const select = document.getElementById('promoProducto');
+        if (select) select.value = '';
+
+        mostrarNotificacion('Promoción creada', 'success');
+        await cargarPromos();
+        renderCarrito();
+    };
+
+    window.alternarPromo = async function (id) {
+        const promo = listaPromociones.find(p => p.id === id);
+        if (!promo) return;
+
+        const { error } = await supabaseClient
+            .from('promociones')
+            .update({ activa: promo.activa === false })
+            .eq('id', id);
+
+        if (error) return mostrarNotificacion('No se pudo cambiar. ' + mensajeError(error), 'error');
+
+        await cargarPromos();
+        renderCarrito();
+    };
+
+    window.eliminarPromo = async function (id) {
+        const confirmado = await abrirConfirmacion({
+            titulo: 'Eliminar promoción',
+            mensaje: 'La promoción dejará de aplicarse en el POS.',
+            boton: 'Eliminar',
+            peligro: true
+        });
+        if (!confirmado) return;
+
+        const resultado = await borrarRegistro('promociones', id);
+        if (!resultado.ok) return mostrarNotificacion('No se pudo eliminar. ' + resultado.mensaje, 'error');
+
+        mostrarNotificacion('Promoción eliminada', 'success');
+        await cargarPromos();
+        renderCarrito();
+    };
 
     async function cargarDatosIniciales() {
         const [resCat, resProv, resUbi, resUMed, resTipoDoc] = await Promise.all([
@@ -187,6 +389,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (tabId === 'tab-proveedores') cargarProveedores();
         if (tabId === 'tab-ajustes') cargarAjustes(); 
         if (tabId === 'tab-ventas' && typeof window.cargarVentas === 'function') window.cargarVentas();
+        if (tabId === 'tab-promos') cargarPromos();
     };
 
     window.abrirAdmin = function() { document.getElementById('pos-view').classList.add('hidden'); document.getElementById('admin-view').classList.remove('hidden'); cargarProductosAdmin(); };
@@ -216,9 +419,23 @@ document.addEventListener('DOMContentLoaded', () => {
             return mostrarNotificacion('Ese producto no está disponible', 'error');
         }
 
+        const promo = promoVigente(producto.id);
+        const precioBase = Number(producto.precio);
+        const precio = promo ? Number((precioBase * (1 - Number(promo.descuento) / 100)).toFixed(2)) : precioBase;
+
         const existe = carrito.find(item => item.id === producto.id);
         if (existe) existe.cantidad++;
-        else carrito.push({ id: producto.id, codigo: producto.codigo, nombre: producto.nombre, precio: Number(producto.precio), cantidad: 1, aplica_iva: producto.aplica_iva });
+        else carrito.push({
+            id: producto.id,
+            codigo: producto.codigo,
+            nombre: producto.nombre,
+            precio,
+            precio_original: precioBase,
+            descuento: promo ? Number(promo.descuento) : 0,
+            promo: promo ? promo.nombre : null,
+            cantidad: 1,
+            aplica_iva: producto.aplica_iva
+        });
         
         inputCode.value = ''; renderCarrito();
     };
@@ -229,7 +446,9 @@ document.addEventListener('DOMContentLoaded', () => {
         carrito.forEach((item, index) => {
             const tr = document.createElement('tr');
             tr.innerHTML = `
-                <td>${item.codigo}</td><td>${item.nombre}</td><td>$${item.precio.toFixed(2)}</td>
+                <td>${item.codigo}</td>
+                <td>${item.nombre}${item.descuento ? ` <span class="badge-promo">-${item.descuento}%</span>` : ''}</td>
+                <td>$${item.precio.toFixed(2)}${item.descuento ? ` <s class="precio-tachado">$${item.precio_original.toFixed(2)}</s>` : ''}</td>
                 <td><input type="number" class="input-cantidad" value="${item.cantidad}" min="1" onchange="actualizarCantidad(${index}, this.value)"></td>
                 <td>$${(item.precio * item.cantidad).toFixed(2)}</td>
                 <td><button class="btn-eliminar" onclick="eliminarItem(${index})">X</button></td>
@@ -351,16 +570,37 @@ document.addEventListener('DOMContentLoaded', () => {
             });
             if (error) throw error;
 
-            // Forma de pago: el precio y las líneas ya los guardó realizar_venta
-            const pago = await supabaseClient.rpc('registrar_pago', {
+            // Guarda la forma de pago y el total real cobrado (con IVA).
+            // Si la función nueva aún no está instalada, se usa la anterior.
+            const cobro = await supabaseClient.rpc('registrar_cobro', {
                 p_venta_id: data.venta_id,
                 p_metodo: metodoPago,
                 p_recibido: recibido,
-                p_vuelto: vuelto
+                p_vuelto: vuelto,
+                p_total: total
             });
-            if (pago.error) console.warn('No se pudo guardar la forma de pago:', pago.error.message);
+
+            if (cobro.error) {
+                const respaldo = await supabaseClient.rpc('registrar_pago', {
+                    p_venta_id: data.venta_id,
+                    p_metodo: metodoPago,
+                    p_recibido: recibido,
+                    p_vuelto: vuelto
+                });
+
+                if (respaldo.error) console.warn('No se pudo guardar la forma de pago:', respaldo.error.message);
+                else console.warn('Falta ejecutar sql/008 para guardar el total con IVA.');
+            }
 
             mostrarNotificacion(`¡Venta #${data.venta_id}!`, 'success');
+
+            // El precio de cada línea debe ser el rebajado que se cobró
+            const precios = await supabaseClient.rpc('actualizar_precios_venta', {
+                p_venta_id: data.venta_id,
+                p_items: items.map(item => ({ id: item.id, precio: item.precio }))
+            });
+            if (precios.error) console.warn('No se pudieron actualizar los precios de las líneas:', precios.error.message);
+
             carrito = [];
             renderCarrito();
             window.cerrarModalCobro();
@@ -369,7 +609,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 moduloTicket.mostrar({
                     id: data.venta_id,
                     usuario: 'Vendedor Demo',
-                    items,
+                    items: items.map(item => ({
+                        ...item,
+                        nombre: item.descuento ? `${item.nombre} (-${item.descuento}%)` : item.nombre
+                    })),
                     subtotal,
                     iva,
                     total,
@@ -448,7 +691,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     : `<button class="btn-icon btn-danger" title="Quitar del listado" onclick="eliminarProducto(${prod.id})">🗑️</button>`;
 
                 tr.innerHTML = `
-                    <td>${prod.codigo}</td><td>${prod.nombre}</td><td>${prod.categorias ? prod.categorias.nombre : '-'}</td><td>${prod.unidades_medida ? prod.unidades_medida.abreviatura : '-'}</td><td>${prod.stock_minimo || 0}</td><td style="font-weight:bold; color:${prod.stock <= prod.stock_minimo ? 'red' : 'green'}">${prod.stock}</td><td>$${pC.toFixed(2)}</td><td>$${pV.toFixed(2)}</td><td style="color: ${prod.aplica_iva ? '#16a34a' : '#dc2626'}; font-weight:bold;">${prod.aplica_iva ? 'Sí' : 'No'}</td><td>$${margen.toFixed(2)}</td><td>${pct}%</td><td>${prod.proveedores ? prod.proveedores.nombre : '-'}</td><td class="td-acciones"><button class="btn-icon btn-stock" title="Entrada / salida de stock" onclick="abrirModalStock(${prod.id})">📦</button><button class="btn-icon btn-ver" title="Ver y editar" onclick="verProducto(${prod.id})">✏️</button>${botonFinal}</td>`;
+                    <td>${prod.codigo}</td><td>${prod.nombre}</td><td>${prod.categorias ? prod.categorias.nombre : '-'}</td><td>${prod.unidades_medida ? prod.unidades_medida.abreviatura : '-'}</td><td>${prod.stock_minimo || 0}</td><td style="font-weight:bold; color:${prod.stock <= prod.stock_minimo ? 'red' : 'green'}">${prod.stock}</td><td>$${pC.toFixed(2)}</td><td>$${pV.toFixed(2)}</td><td style="color: ${prod.aplica_iva ? '#16a34a' : '#dc2626'}; font-weight:bold;">${prod.aplica_iva ? Number((IVA_RATE * 100).toFixed(2)) + '%' : 'No'}</td><td>$${margen.toFixed(2)}</td><td>${pct}%</td><td>${prod.proveedores ? prod.proveedores.nombre : '-'}</td><td class="td-acciones"><button class="btn-icon btn-stock" title="Entrada / salida de stock" onclick="abrirModalStock(${prod.id})">📦</button><button class="btn-icon btn-ver" title="Ver y editar" onclick="verProducto(${prod.id})">✏️</button>${botonFinal}</td>`;
                 tr.insertBefore(tdImg, tr.firstChild); tbody.appendChild(tr);
             });
         }
@@ -1086,6 +1329,8 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     async function cargarAjustes() {
+        cargarConfiguracion();
+
         const { data: cats } = await supabaseClient.from('categorias').select('*').order('nombre');
         document.getElementById('listaCategorias').innerHTML = cats.map(c => `<li>${c.nombre} <button onclick="eliminarCategoria(${c.id})" class="btn-eliminar">X</button></li>`).join('');
         

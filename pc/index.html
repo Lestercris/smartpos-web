@@ -7,8 +7,8 @@
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://cdn.sheetjs.com/xlsx-0.20.0/package/dist/xlsx.full.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.6/dist/JsBarcode.all.min.js"></script>
-    <link rel="stylesheet" href="css/styles.css?v=20261122d">
-    <link rel="stylesheet" href="modulos/ticket/ticket.css?v=20261122d">
+    <link rel="stylesheet" href="css/styles.css?v=20261122h">
+    <link rel="stylesheet" href="modulos/ticket/ticket.css?v=20261122h">
 </head>
 <body>
     <header class="app-header">
@@ -60,6 +60,7 @@
                     <button class="tab-btn active" data-tab="tab-productos" onclick="cambiarTab('tab-productos')">Productos</button>
                     <button class="tab-btn" data-tab="tab-comprobantes" onclick="cambiarTab('tab-comprobantes')">Tickets</button>
                     <button class="tab-btn" data-tab="tab-ventas" onclick="cambiarTab('tab-ventas')">Ventas</button>
+                    <button class="tab-btn" data-tab="tab-promos" onclick="cambiarTab('tab-promos')">Promos</button>
                     <button class="tab-btn" data-tab="tab-clientes" onclick="cambiarTab('tab-clientes')">Clientes</button>
                     <button class="tab-btn" data-tab="tab-proveedores" onclick="cambiarTab('tab-proveedores')">Proveedores</button>
                     <button class="tab-btn" data-tab="tab-ajustes" onclick="cambiarTab('tab-ajustes')">Ajustes</button>
@@ -187,6 +188,41 @@
                     </div>
                 </div>
 
+                <!-- ================= PESTAÑA: PROMOCIONES ================= -->
+                <div id="tab-promos" class="tab-content">
+                    <div class="card-inner mb-20">
+                        <h3>Nueva promoción</h3>
+                        <div class="form-grid">
+                            <div class="form-field"><label>Nombre</label><input type="text" id="promoNombre" placeholder="Ej: Oferta de fin de semana"></div>
+                            <div class="form-field"><label>Producto</label><select id="promoProducto"><option value="">Todos los productos</option></select></div>
+                            <div class="form-field"><label>Descuento (%)</label><input type="number" id="promoDescuento" min="1" max="100" step="0.01" placeholder="20"></div>
+                            <div class="form-field"><label>Desde (opcional)</label><input type="date" id="promoDesde"></div>
+                            <div class="form-field"><label>Hasta (opcional)</label><input type="date" id="promoHasta"></div>
+                            <div class="form-field btn-field"><button class="btn btn-primary" onclick="guardarPromo()">+ Añadir promoción</button></div>
+                        </div>
+                        <p class="iva-ayuda">El POS aplica la mejor promoción vigente al añadir el producto. El precio rebajado se guarda en la venta y aparece en el ticket.</p>
+                    </div>
+
+                    <div class="table-responsive">
+                        <table class="data-table" style="min-width: 760px;">
+                            <thead>
+                                <tr>
+                                    <th>Promoción</th>
+                                    <th>Producto</th>
+                                    <th>Descuento</th>
+                                    <th>Desde</th>
+                                    <th>Hasta</th>
+                                    <th>Estado</th>
+                                    <th>Acciones</th>
+                                </tr>
+                            </thead>
+                            <tbody id="promoTableBody">
+                                <tr><td colspan="7" class="empty">No hay promociones</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
                 <!-- ================= PESTAÑA: PRODUCTOS ================= -->
                 <div id="tab-productos" class="tab-content active">
                     <div class="admin-actions mb-20">
@@ -211,7 +247,7 @@
                         <div class="form-field"><label>Precio venta</label><input type="number" id="newPrecio" placeholder="0.00" step="0.01"></div>
                         <div class="form-field" style="flex-direction: row; align-items: center; gap: 10px; height: 42px; background: white; padding: 0 10px; border: 1px solid #cbd5e1; border-radius: 6px;">
                             <input type="checkbox" id="newAplicaIva" checked style="width: 18px; height: 18px; cursor: pointer;">
-                            <label for="newAplicaIva" style="margin: 0; cursor: pointer; font-size: 14px;">Cobra IVA</label>
+                            <label for="newAplicaIva" style="margin: 0; cursor: pointer; font-size: 14px;">Paga IVA</label>
                         </div>
                         <div class="form-field"><label>Imagen</label><input type="file" id="newImagen" accept="image/*" class="input-file"></div>
                         <div class="form-field btn-field"><button class="btn btn-primary" onclick="guardarProducto()">+ Añadir</button></div>
@@ -269,6 +305,15 @@
                 <!-- ================= PESTAÑA: AJUSTES ================= -->
                 <div id="tab-ajustes" class="tab-content">
                     <div class="grid-ajustes">
+                        <div class="card-inner">
+                            <h3>IVA</h3>
+                            <div class="form-field mb-20">
+                                <label>Porcentaje de IVA (%)</label>
+                                <input type="number" id="ivaPorcentaje" step="0.01" min="0" max="100" placeholder="18">
+                            </div>
+                            <button class="btn btn-primary" onclick="guardarIva()">Guardar IVA</button>
+                            <p class="iva-ayuda">Se aplica solo a los productos marcados como <b>«Paga IVA»</b>.</p>
+                        </div>
                         <div class="card-inner">
                             <h3>Categorías</h3>
                             <div class="input-row mb-20"><input type="text" id="newCatNombre" placeholder="Nueva categoría"><button class="btn btn-primary" onclick="guardarCategoria()">+</button></div>
@@ -433,7 +478,7 @@
                         <div class="form-field"><label>Stock mínimo</label><input type="number" id="prodStockMin"></div>
                         <div class="form-field prod-check">
                             <input type="checkbox" id="prodAplicaIva">
-                            <label for="prodAplicaIva">Cobra IVA</label>
+                            <label for="prodAplicaIva">Paga IVA</label>
                         </div>
                     </div>
                 </div>
@@ -479,10 +524,10 @@
 
     </main>
 
-    <script src="js/db.js?v=20261122d"></script>
-    <script src="js/pos.js?v=20261122d"></script>
-    <script src="js/realtime.js?v=20261122d"></script>
-    <script src="modulos/ticket/ticket.js?v=20261122d"></script>
-    <script src="js/ventas.js?v=20261122d"></script>
+    <script src="js/db.js?v=20261122h"></script>
+    <script src="js/pos.js?v=20261122h"></script>
+    <script src="js/realtime.js?v=20261122h"></script>
+    <script src="modulos/ticket/ticket.js?v=20261122h"></script>
+    <script src="js/ventas.js?v=20261122h"></script>
 </body>
 </html>

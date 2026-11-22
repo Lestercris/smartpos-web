@@ -43,6 +43,7 @@ movil/
 | Productos | Alta, imagen, stock mínimo, precios, margen, IVA, edición con vista grande de imagen, duplicar, entrada/salida de stock con historial, importar/exportar Excel, etiquetas |
 | Comprobantes | Búsqueda por escáner o folio, devoluciones parciales y anulación completa |
 | Ventas | Reportes por período, KPIs, detalle, reimpresión de ticket y exportación a Excel |
+| Promociones | Rebajas por producto o para todos, con fechas; el POS aplica la mejor vigente y guarda el precio rebajado |
 | Clientes / Proveedores | Altas y bajas con tipo y número de documento |
 | Ajustes | Categorías, subcategorías, ubicaciones, unidades de medida y tipos de documento |
 | Escáner móvil | Envía el código al PC en tiempo real; los folios `T-xxxxxx` abren el comprobante |
@@ -76,12 +77,15 @@ Los scripts de corrección de esquema están en [`sql/`](sql/). Hay que ejecutar
 5. `sql/005_movimientos_stock.sql` — tabla `movimientos_stock` con el historial de entradas y salidas de inventario.
 6. `sql/006_ocultar_productos.sql` — columna `productos.activo` para ocultar productos con ventas (sin romper el historial) y permisos de borrado con RLS.
 7. `sql/007_metodo_pago.sql` — forma de pago (efectivo/tarjeta/transferencia), importe recibido y vuelto en cada venta.
+8. `sql/008_registrar_cobro.sql` — `registrar_cobro`: guarda el total real cobrado (con IVA) y la forma de pago en una sola llamada.
+9. `sql/009_configuracion_iva.sql` — tabla `smartpos_config` para guardar el porcentaje de IVA editable desde Ajustes.
+10. `sql/010_promociones.sql` — tabla `promociones` (rebajas por producto con fechas) y función para dejar el precio de las líneas en lo realmente cobrado.
 
 > La clave `anon` es pública por diseño; la seguridad real depende de las políticas RLS configuradas en Supabase.
 
 ## Pendientes sugeridos
 
-- Cliente asociado a la venta y descuentos.
+- Cliente asociado a la venta.
 - Datos fiscales del negocio en el ticket (nombre, RIF/NIT, dirección, logo).
 - Descuentos por línea o por venta.
 - Modo offline / PWA para seguir vendiendo sin internet.
