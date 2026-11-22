@@ -67,6 +67,10 @@ Funciones RPC: `realizar_venta`, `procesar_devolucion`, `anular_venta_completa`.
 
 Bucket de Storage: `productos-imagenes`.
 
+Los scripts de corrección de esquema están en [`sql/`](sql/). Hay que ejecutarlos en **Supabase → SQL Editor**:
+
+- `sql/001_fix_ventas_estado.sql` — añade `ventas.estado` (la necesitan la anulación, el arqueo y los reportes).
+
 > La clave `anon` es pública por diseño; la seguridad real depende de las políticas RLS configuradas en Supabase.
 
 ## Pendientes sugeridos

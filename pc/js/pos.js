@@ -247,16 +247,63 @@ document.addEventListener('DOMContentLoaded', () => {
                 p_items: carritoCopia.map(item => ({ id: item.id, cantidad: item.cantidad })) 
             });
             if (error) throw error;
-            
-            mostrarNotificacion(`¡Venta #${data.venta_id}!`, 'success');
+
+            // La función realizar_venta no guarda las líneas: las guardamos aquí
+            // para que el comprobante, las devoluciones y los reportes tengan detalle.
+            const detallesOk = await guardarDetallesVenta(data.venta_id, carritoCopia);
+
+            mostrarNotificacion(
+                detallesOk ? `¡Venta #${data.venta_id}!` : `Venta #${data.venta_id} guardada SIN detalle de productos`,
+                detallesOk ? 'success' : 'error'
+            );
             carrito = []; renderCarrito();
             
             if (typeof moduloTicket !== 'undefined') {
                 moduloTicket.mostrar({ id: data.venta_id, usuario: 'Vendedor Demo', items: carritoCopia, subtotal, iva, total });
             }
             if (!document.getElementById('admin-view').classList.contains('hidden')) cargarProductosAdmin();
-        } catch (err) { mostrarNotificacion('Error: ' + err.message, 'error'); }
+        } catch (err) { mostrarNotificacion('Error: ' + mensajeError(err), 'error'); }
     };
+
+    // Guarda las líneas de la venta solo si aún no existen (evita duplicados)
+    async function guardarDetallesVenta(ventaId, items) {
+        try {
+            const { data: existentes, error: errExiste } = await supabaseClient
+                .from('venta_detalles')
+                .select('id')
+                .eq('venta_id', ventaId)
+                .limit(1);
+
+            if (errExiste) throw errExiste;
+            if (existentes && existentes.length > 0) return true;
+
+            const filas = items.map(item => ({
+                venta_id: ventaId,
+                producto_id: item.id,
+                cantidad: item.cantidad,
+                precio_unitario: item.precio
+            }));
+
+            const { error } = await supabaseClient.from('venta_detalles').insert(filas);
+            if (error) throw error;
+            return true;
+        } catch (err) {
+            console.warn('No se pudieron guardar los detalles de la venta:', err.message || err);
+            return false;
+        }
+    }
+
+    // Traduce los errores técnicos de la base en algo accionable
+    function mensajeError(err) {
+        const texto = String((err && err.message) || err || 'Error desconocido');
+        if (/estado/i.test(texto) && /does not exist/i.test(texto)) {
+            return 'falta la columna "estado" en la tabla ventas. Ejecuta sql/001_fix_ventas_estado.sql en Supabase.';
+        }
+        if (/does not exist/i.test(texto)) {
+            return texto + ' (revisa el esquema en Supabase)';
+        }
+        return texto;
+    }
         // ==================== GESTIÓN DE PRODUCTOS ====================
     window.cargarProductosAdmin = async function() {
         const tbody = document.getElementById('productTableBody'); if (!tbody) return;
@@ -630,15 +677,19 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // Tabla de detalles
         const tbody = document.getElementById('tk-detalles-body');
-        tbody.innerHTML = v.detalles.map(d => `
-            <tr>
-                <td>${d.productos ? d.productos.nombre : 'Producto Eliminado'}</td>
-                <td>$${Number(d.precio_unitario).toFixed(2)}</td>
-                <td>${d.cantidad}</td>
-                <td style="color: #b45309;">${d.cantidad_devuelta}</td>
-                <td><b style="color: ${d.cantidad_disponible > 0 ? '#16a34a' : '#dc2626'}">${d.cantidad_disponible}</b></td>
-            </tr>
-        `).join('');
+        if (!v.detalles || v.detalles.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="5" class="empty">Esta venta no tiene líneas guardadas (se registró antes del arreglo)</td></tr>';
+        } else {
+            tbody.innerHTML = v.detalles.map(d => `
+                <tr>
+                    <td>${d.productos ? d.productos.nombre : 'Producto Eliminado'}</td>
+                    <td>$${Number(d.precio_unitario).toFixed(2)}</td>
+                    <td>${d.cantidad}</td>
+                    <td style="color: #b45309;">${d.cantidad_devuelta}</td>
+                    <td><b style="color: ${d.cantidad_disponible > 0 ? '#16a34a' : '#dc2626'}">${d.cantidad_disponible}</b></td>
+                </tr>
+            `).join('');
+        }
     }
 
     // --- MODAL DE DEVOLUCIÓN ---
@@ -697,7 +748,7 @@ document.addEventListener('DOMContentLoaded', () => {
             buscarComprobante(); // Recargar la vista
             cargarProductosAdmin(); // Recargar stock en admin
         } catch (err) {
-            mostrarNotificacion('Error: ' + err.message, 'error');
+            mostrarNotificacion('Error: ' + mensajeError(err), 'error');
         }
     };
 
@@ -719,7 +770,7 @@ document.addEventListener('DOMContentLoaded', () => {
             buscarComprobante();
             cargarProductosAdmin();
         } catch (err) {
-            mostrarNotificacion('Error: ' + err.message, 'error');
+            mostrarNotificacion('Error: ' + mensajeError(err), 'error');
         }
     };
 });
