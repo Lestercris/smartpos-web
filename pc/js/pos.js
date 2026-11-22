@@ -2,7 +2,7 @@ document.addEventListener('DOMContentLoaded', () => {
     
     // ==================== VARIABLES GLOBALES ====================
     let carrito = [];
-    const IVA_RATE = 0.18; 
+    const IVA_RATE = (typeof SMARTPOS_CONFIG !== 'undefined' && SMARTPOS_CONFIG.IVA_RATE) ? SMARTPOS_CONFIG.IVA_RATE : 0.18;
     let turnoActual = null; // Variable global para saber si hay caja abierta
     
     let listaCategorias = [], listaProveedores = [], listaUbicaciones = [], listaUMedidas = [], listaTiposDoc = [];
@@ -95,8 +95,21 @@ document.addEventListener('DOMContentLoaded', () => {
     window.abrirModalCerrarCaja = async function() {
         if (!turnoActual) return;
         
-        const { data: ventas } = await supabaseClient.from('ventas').select('total').gte('created_at', turnoActual.fecha_apertura);
-        const totalVentas = ventas.reduce((sum, v) => sum + Number(v.total), 0);
+        let respuesta = await supabaseClient.from('ventas')
+            .select('total, estado')
+            .gte('created_at', turnoActual.fecha_apertura);
+
+        // Compatibilidad: si la base no tiene la columna "estado", se consulta solo el total
+        if (respuesta.error) {
+            respuesta = await supabaseClient.from('ventas')
+                .select('total')
+                .gte('created_at', turnoActual.fecha_apertura);
+        }
+
+        // Solo sumamos las ventas válidas: las anuladas no entran en el arqueo
+        const totalVentas = (respuesta.data || [])
+            .filter(v => String(v.estado || '').toUpperCase() !== 'ANULADA')
+            .reduce((sum, v) => sum + Number(v.total || 0), 0);
         const montoSistema = Number(turnoActual.monto_inicial) + totalVentas;
 
         document.getElementById('modalCaja').classList.remove('hidden');
@@ -158,6 +171,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (tabId === 'tab-clientes') cargarClientes();
         if (tabId === 'tab-proveedores') cargarProveedores();
         if (tabId === 'tab-ajustes') cargarAjustes(); 
+        if (tabId === 'tab-ventas' && typeof window.cargarVentas === 'function') window.cargarVentas();
     };
 
     window.abrirAdmin = function() { document.getElementById('pos-view').classList.add('hidden'); document.getElementById('admin-view').classList.remove('hidden'); cargarProductosAdmin(); };
@@ -516,61 +530,73 @@ document.addEventListener('DOMContentLoaded', () => {
         toast.className = `toast ${tipo === 'error' ? 'toast-error' : 'toast-success'}`; 
         toast.textContent = mensaje;
         document.body.appendChild(toast); 
-        setTimeout(() => { toast.classList.add('fade-out'); setTimeout(() => toast.remove(), 300); }, 3000);
+        // La clase "show" es la que hace visible el toast (la animación arranca en opacity 0)
+        requestAnimationFrame(() => toast.classList.add('show'));
+        setTimeout(() => {
+            toast.classList.remove('show');
+            setTimeout(() => toast.remove(), 300);
+        }, 3000);
     }
+    // Disponible para los demás módulos (ventas.js, realtime.js, etc.)
+    window.mostrarNotificacion = mostrarNotificacion;
 
 
         // ==================== MÓDULO DE COMPROBANTES Y DEVOLUCIONES ====================
     let comprobanteActual = null; // Guarda la venta cargada actualmente
 
-    window.buscarComprobante = async function() {
+       window.buscarComprobante = async function() {
         const query = document.getElementById('searchTicket').value.trim().toUpperCase();
         if (!query) return mostrarNotificacion('Escribe o escanea un código de ticket', 'error');
 
-        // Limpiamos el prefijo 'T-' si viene del código de barras
         const idLimpio = query.replace(/[^0-9]/g, ''); 
         if (!idLimpio) return mostrarNotificacion('Formato de ticket inválido', 'error');
 
         try {
             mostrarNotificacion('Buscando ticket...', 'success');
             
-            // 1. Buscar la venta
+            // Hacemos una sola consulta trayendo la venta, sus productos y sus devoluciones
             const { data: venta, error: ventaError } = await supabaseClient
                 .from('ventas')
-                .select('*')
+                .select(`
+                    *,
+                    venta_detalles (
+                        *,
+                        productos (nombre)
+                    ),
+                    devoluciones (
+                        devolucion_detalles (
+                            producto_id,
+                            cantidad
+                        )
+                    )
+                `)
                 .eq('id', parseInt(idLimpio))
                 .single();
 
             if (ventaError || !venta) throw new Error('Ticket no encontrado');
 
-            // 2. Buscar los detalles de la venta
-            const { data: detalles, error: detError } = await supabaseClient
-                .from('venta_detalles')
-                .select(`*, productos (nombre)`)
-                .eq('venta_id', venta.id);
-
-            if (detError) throw detError;
-
-            // 3. Buscar las devoluciones previas para calcular cuánto queda disponible
-            const { data: devoluciones } = await supabaseClient
-                .from('devolucion_detalles')
-                .select(`producto_id, cantidad, devoluciones!inner(venta_id)`)
-                .eq('devoluciones.venta_id', venta.id);
-
+            // Procesamos las devoluciones para saber cuánto se ha devuelto de cada producto
             const devueltosMap = {};
-            if (devoluciones) {
-                devoluciones.forEach(d => {
-                    devueltosMap[d.producto_id] = (devueltosMap[d.producto_id] || 0) + d.cantidad;
+            if (venta.devoluciones && venta.devoluciones.length > 0) {
+                venta.devoluciones.forEach(dev => {
+                    if (dev.devolucion_detalles) {
+                        dev.devolucion_detalles.forEach(det => {
+                            devueltosMap[det.producto_id] = (devueltosMap[det.producto_id] || 0) + det.cantidad;
+                        });
+                    }
                 });
             }
 
-            // Agregar la cantidad devuelta a cada detalle
-            detalles.forEach(det => {
+            // Asignamos las cantidades disponibles
+            venta.venta_detalles.forEach(det => {
                 det.cantidad_devuelta = devueltosMap[det.producto_id] || 0;
                 det.cantidad_disponible = det.cantidad - det.cantidad_devuelta;
             });
 
-            comprobanteActual = { ...venta, detalles };
+            // Renombramos la propiedad para que el resto del código funcione igual
+            venta.detalles = venta.venta_detalles;
+
+            comprobanteActual = venta;
             renderizarComprobante();
 
         } catch (err) {
@@ -578,7 +604,6 @@ document.addEventListener('DOMContentLoaded', () => {
             mostrarNotificacion(err.message, 'error');
         }
     };
-
     function renderizarComprobante() {
         const v = comprobanteActual;
         document.getElementById('ticketResultado').classList.remove('hidden');

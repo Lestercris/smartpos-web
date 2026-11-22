@@ -59,14 +59,17 @@ function startScanner() {
             target: container,
             constraints: { 
                 facingMode: 'environment', 
-                width: { ideal: 800 }, // Un poco más bajo para que el procesamiento sea instantáneo
-                height: { ideal: 600 }
+                width: { ideal: 1024 }, // Subimos a 1024 para que el Code 128 se vea más nítido
+                height: { ideal: 768 }
             }
         },
         locator: { patchSize: "medium", halfSample: true },
         numOfWorkers: navigator.hardwareConcurrency || 2,
-        frequency: 20, // Intenta leer 20 veces por segundo (súper rápido)
-        decoder: { readers: ['ean_reader', 'ean_8_reader', 'code_128_reader', 'upc_reader'] },
+        frequency: 20,
+        decoder: { 
+            // PRIORIDAD: Ponemos code_128_reader primero para que lo intente leer antes que nada
+            readers: ['code_128_reader', 'ean_reader', 'ean_8_reader', 'upc_reader'] 
+        },
         locate: true
     }, function(err) {
         if (err) {

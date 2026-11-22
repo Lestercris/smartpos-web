@@ -34,9 +34,9 @@ const moduloTicket = {
         // 1. Llenar los datos básicos
         document.getElementById('tk-id').textContent = String(venta.id).padStart(6, '0');
         
-        const fecha = new Date();
+        const fecha = venta.fecha ? new Date(venta.fecha) : new Date();
         document.getElementById('tk-fecha').textContent = fecha.toLocaleString();
-        document.getElementById('tk-vendedor').textContent = venta.usuario;
+        document.getElementById('tk-vendedor').textContent = venta.usuario || '-';
 
         // 2. Llenar la tabla de productos
         const tbody = document.getElementById('tk-productos');
@@ -66,8 +66,8 @@ const moduloTicket = {
             JsBarcode("#tk-barcode", codigoTicket, {
                 format: "CODE128",
                 lineColor: "#000",
-                width: 2,
-                height: 40,
+                width: 3,
+                height: 50,
                 displayValue: false // Ocultamos el texto por defecto para usar el nuestro
             });
             

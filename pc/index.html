@@ -59,6 +59,7 @@
                 <div class="tabs-nav">
                     <button class="tab-btn active" data-tab="tab-productos" onclick="cambiarTab('tab-productos')">Productos</button>
                     <button class="tab-btn" data-tab="tab-comprobantes" onclick="cambiarTab('tab-comprobantes')">Comprobantes</button>
+                    <button class="tab-btn" data-tab="tab-ventas" onclick="cambiarTab('tab-ventas')">Ventas</button>
                     <button class="tab-btn" data-tab="tab-clientes" onclick="cambiarTab('tab-clientes')">Clientes</button>
                     <button class="tab-btn" data-tab="tab-proveedores" onclick="cambiarTab('tab-proveedores')">Proveedores</button>
                     <button class="tab-btn" data-tab="tab-ajustes" onclick="cambiarTab('tab-ajustes')">Ajustes</button>
@@ -103,6 +104,84 @@
                                 <button class="btn btn-warning" id="btnDevolver" onclick="abrirModalDevolucion()">↩️ Devolver Productos</button>
                                 <button class="btn btn-danger" id="btnAnular" onclick="anularVentaCompleta()">🚫 Anular Venta Completa</button>
                             </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ================= PESTAÑA: VENTAS / REPORTES ================= -->
+                <div id="tab-ventas" class="tab-content">
+                    <div class="toolbar-ventas">
+                        <div class="filtro-ventas">
+                            <label for="ventasRango">Período</label>
+                            <select id="ventasRango" onchange="cambiarRangoVentas(this.value)">
+                                <option value="hoy" selected>Hoy</option>
+                                <option value="ayer">Ayer</option>
+                                <option value="7dias">Últimos 7 días</option>
+                                <option value="mes">Este mes</option>
+                                <option value="personalizado">Personalizado</option>
+                            </select>
+                            <div id="ventasFechasCustom" class="input-row hidden">
+                                <input type="date" id="ventasDesde" title="Desde">
+                                <input type="date" id="ventasHasta" title="Hasta">
+                                <button class="btn btn-primary" onclick="cargarVentas()">Aplicar</button>
+                            </div>
+                        </div>
+                        <div class="admin-actions">
+                            <button class="btn btn-secondary" onclick="cargarVentas()">🔄 Actualizar</button>
+                            <button class="btn btn-success" onclick="exportarVentasExcel()">📤 Exportar Excel</button>
+                        </div>
+                    </div>
+
+                    <div class="kpi-grid">
+                        <div class="kpi-card">
+                            <span class="kpi-label">Ventas emitidas</span>
+                            <span class="kpi-value" id="kpiVentas">0</span>
+                            <span class="kpi-sub">Tickets válidos</span>
+                        </div>
+                        <div class="kpi-card">
+                            <span class="kpi-label">Ingresos</span>
+                            <span class="kpi-value kpi-success" id="kpiIngresos">$0.00</span>
+                            <span class="kpi-sub">Sin anuladas</span>
+                        </div>
+                        <div class="kpi-card">
+                            <span class="kpi-label">Ticket promedio</span>
+                            <span class="kpi-value" id="kpiPromedio">$0.00</span>
+                            <span class="kpi-sub">Por venta emitida</span>
+                        </div>
+                        <div class="kpi-card">
+                            <span class="kpi-label">Anuladas</span>
+                            <span class="kpi-value kpi-danger" id="kpiAnuladas">0</span>
+                            <span class="kpi-sub" id="kpiAnuladasSub">$0.00 anulados</span>
+                        </div>
+                    </div>
+
+                    <p class="ventas-periodo" id="ventasPeriodo"></p>
+
+                    <div class="table-responsive">
+                        <table class="data-table" style="min-width: 720px;">
+                            <thead>
+                                <tr>
+                                    <th>Folio</th>
+                                    <th>Fecha y hora</th>
+                                    <th>Usuario</th>
+                                    <th>Unid.</th>
+                                    <th>Total</th>
+                                    <th>Estado</th>
+                                    <th>Acciones</th>
+                                </tr>
+                            </thead>
+                            <tbody id="ventasTableBody">
+                                <tr><td colspan="7" class="empty">Selecciona un período y pulsa Actualizar</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <div class="pagination-footer">
+                        <span id="ventasPaginationInfo">Mostrando 0 de 0</span>
+                        <div class="pagination-buttons">
+                            <button class="btn btn-secondary btn-sm" onclick="cambiarPaginaVentas(-1)" id="ventasPrevBtn">← Anterior</button>
+                            <span id="ventasPageInfo">Página 1 de 1</span>
+                            <button class="btn btn-secondary btn-sm" onclick="cambiarPaginaVentas(1)" id="ventasNextBtn">Siguiente →</button>
                         </div>
                     </div>
                 </div>
@@ -252,11 +331,39 @@
             </div>
         </div>
 
+        <!-- MODAL DE DETALLE DE VENTA -->
+        <div class="modal-overlay hidden" id="modalVentaDetalle">
+            <div class="modal-box" style="max-width: 640px;">
+                <h2 id="vd-titulo">Venta #000000</h2>
+                <div id="vd-info" class="mb-20" style="font-size: 13px; color: #475569; line-height: 1.7;"></div>
+
+                <div class="table-responsive">
+                    <table class="data-table" style="min-width: auto;">
+                        <thead><tr><th>Producto</th><th>P. Unit</th><th>Cant.</th><th>Total</th></tr></thead>
+                        <tbody id="vd-body"></tbody>
+                    </table>
+                </div>
+
+                <div class="ticket-totales" style="margin-top: 16px;">
+                    <div class="ticket-row"><span>Subtotal:</span><span id="vd-sub">$0.00</span></div>
+                    <div class="ticket-row"><span>IVA:</span><span id="vd-iva">$0.00</span></div>
+                    <div class="ticket-row ticket-total"><span>TOTAL:</span><span id="vd-total">$0.00</span></div>
+                </div>
+
+                <div class="modal-actions">
+                    <button class="btn btn-secondary" onclick="cerrarDetalleVenta()">Cerrar</button>
+                    <button class="btn btn-warning" id="vd-btnDevolver" onclick="gestionarVentaActual()">↩️ Devolver / Anular</button>
+                    <button class="btn btn-primary" onclick="imprimirVentaActual()">🖨️ Reimprimir</button>
+                </div>
+            </div>
+        </div>
+
     </main>
 
     <script src="js/db.js"></script>
     <script src="js/pos.js"></script>
     <script src="js/realtime.js"></script>
     <script src="modulos/ticket/ticket.js"></script>
+    <script src="js/ventas.js"></script>
 </body>
 </html>
