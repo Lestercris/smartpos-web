@@ -74,6 +74,7 @@ Los scripts de corrección de esquema están en [`sql/`](sql/). Hay que ejecutar
 3. `sql/003_limpiar_duplicados.sql` — borra líneas duplicadas y crea un índice único `(venta_id, producto_id)` para que no se repitan.
 4. `sql/004_rls_lectura_devoluciones.sql` — permite leer `devoluciones` y `devolucion_detalles` desde el navegador (sin esto, una devolución se guarda pero el comprobante sigue mostrando 0 devuelto).
 5. `sql/005_movimientos_stock.sql` — tabla `movimientos_stock` con el historial de entradas y salidas de inventario.
+6. `sql/006_ocultar_productos.sql` — columna `productos.activo` para ocultar productos con ventas (sin romper el historial) y permisos de borrado con RLS.
 
 > La clave `anon` es pública por diseño; la seguridad real depende de las políticas RLS configuradas en Supabase.
 

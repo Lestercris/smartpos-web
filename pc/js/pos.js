@@ -7,6 +7,7 @@ document.addEventListener('DOMContentLoaded', () => {
     
     let listaCategorias = [], listaProveedores = [], listaUbicaciones = [], listaUMedidas = [], listaTiposDoc = [];
     let todosLosProductos = [], productosFiltrados = [], paginaActual = 1, itemsPorPagina = 10;
+    let mostrarOcultos = false;
 
     const inputCode = document.getElementById('posCode');
     const cartBody = document.getElementById('cartBody');
@@ -196,6 +197,13 @@ document.addEventListener('DOMContentLoaded', () => {
         if (error || !data || data.length === 0) { inputCode.classList.add('input-error'); setTimeout(() => inputCode.classList.remove('input-error'), 800); inputCode.value = ''; return; }
         
         const producto = data[0];
+        if (producto.activo === false) {
+            inputCode.classList.add('input-error');
+            setTimeout(() => inputCode.classList.remove('input-error'), 800);
+            inputCode.value = '';
+            return mostrarNotificacion('Ese producto no está disponible', 'error');
+        }
+
         const existe = carrito.find(item => item.id === producto.id);
         if (existe) existe.cantidad++;
         else carrito.push({ id: producto.id, codigo: producto.codigo, nombre: producto.nombre, precio: Number(producto.precio), cantidad: 1, aplica_iva: producto.aplica_iva });
@@ -285,6 +293,7 @@ document.addEventListener('DOMContentLoaded', () => {
     window.filtrarProductos = function() {
         const query = document.getElementById('searchProduct').value.toLowerCase().trim();
         productosFiltrados = todosLosProductos.filter(p => {
+            if (!mostrarOcultos && p.activo === false) return false;
             if (!query) return true;
             return (p.codigo.toLowerCase().includes(query) || p.nombre.toLowerCase().includes(query) || (p.categorias && p.categorias.nombre.toLowerCase().includes(query)) || (p.proveedores && p.proveedores.nombre.toLowerCase().includes(query)));
         });
@@ -305,7 +314,9 @@ document.addEventListener('DOMContentLoaded', () => {
             pagina.forEach(prod => {
                 const pC = Number(prod.precio_compra) || 0, pV = Number(prod.precio) || 0;
                 const margen = pV - pC, pct = pC > 0 ? ((margen / pC) * 100).toFixed(1) : '0.0';
+                const oculto = prod.activo === false;
                 const tr = document.createElement('tr');
+                if (oculto) tr.className = 'fila-oculta';
                 const tdImg = document.createElement('td');
                 tdImg.style.cursor = 'pointer';
                 tdImg.title = 'Ver imagen y editar';
@@ -313,8 +324,13 @@ document.addEventListener('DOMContentLoaded', () => {
                     ? `<img src="${prod.imagen_url}" class="img-thumbnail" alt="Producto">`
                     : `<div class="img-thumbnail" style="background:#e2e8f0;"></div>`;
                 tdImg.onclick = () => verProducto(prod.id);
+
+                const botonFinal = oculto
+                    ? `<button class="btn-icon btn-ver" title="Volver a mostrar" onclick="restaurarProducto(${prod.id})">♻️</button>`
+                    : `<button class="btn-icon btn-danger" title="Quitar del listado" onclick="eliminarProducto(${prod.id})">🗑️</button>`;
+
                 tr.innerHTML = `
-                    <td>${prod.codigo}</td><td>${prod.nombre}</td><td>${prod.categorias ? prod.categorias.nombre : '-'}</td><td>${prod.unidades_medida ? prod.unidades_medida.abreviatura : '-'}</td><td>${prod.stock_minimo || 0}</td><td style="font-weight:bold; color:${prod.stock <= prod.stock_minimo ? 'red' : 'green'}">${prod.stock}</td><td>$${pC.toFixed(2)}</td><td>$${pV.toFixed(2)}</td><td style="color: ${prod.aplica_iva ? '#16a34a' : '#dc2626'}; font-weight:bold;">${prod.aplica_iva ? 'Sí' : 'No'}</td><td>$${margen.toFixed(2)}</td><td>${pct}%</td><td>${prod.proveedores ? prod.proveedores.nombre : '-'}</td><td class="td-acciones"><button class="btn-icon btn-stock" title="Entrada / salida de stock" onclick="abrirModalStock(${prod.id})">📦</button><button class="btn-icon btn-ver" title="Ver y editar" onclick="verProducto(${prod.id})">✏️</button><button class="btn-icon btn-danger" title="Eliminar" onclick="eliminarProducto(${prod.id})">🗑️</button></td>`;
+                    <td>${prod.codigo}</td><td>${prod.nombre}</td><td>${prod.categorias ? prod.categorias.nombre : '-'}</td><td>${prod.unidades_medida ? prod.unidades_medida.abreviatura : '-'}</td><td>${prod.stock_minimo || 0}</td><td style="font-weight:bold; color:${prod.stock <= prod.stock_minimo ? 'red' : 'green'}">${prod.stock}</td><td>$${pC.toFixed(2)}</td><td>$${pV.toFixed(2)}</td><td style="color: ${prod.aplica_iva ? '#16a34a' : '#dc2626'}; font-weight:bold;">${prod.aplica_iva ? 'Sí' : 'No'}</td><td>$${margen.toFixed(2)}</td><td>${pct}%</td><td>${prod.proveedores ? prod.proveedores.nombre : '-'}</td><td class="td-acciones"><button class="btn-icon btn-stock" title="Entrada / salida de stock" onclick="abrirModalStock(${prod.id})">📦</button><button class="btn-icon btn-ver" title="Ver y editar" onclick="verProducto(${prod.id})">✏️</button>${botonFinal}</td>`;
                 tr.insertBefore(tdImg, tr.firstChild); tbody.appendChild(tr);
             });
         }
@@ -368,22 +384,36 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     };
 
-    window.eliminarProducto = async function(id) { 
+    window.eliminarProducto = async function (id) {
         const prod = todosLosProductos.find(p => p.id === id);
         const nombre = prod ? prod.nombre : 'este producto';
 
         const confirmado = await abrirConfirmacion({
-            titulo: 'Eliminar producto',
-            mensaje: `Se va a eliminar "${nombre}". Esta acción no se puede deshacer.`,
-            boton: 'Eliminar',
+            titulo: 'Quitar producto',
+            mensaje: `"${nombre}" dejará de aparecer en el listado y en el POS. Sus ventas anteriores se conservan.`,
+            boton: 'Quitar',
             peligro: true
         });
         if (!confirmado) return;
 
-        const { error } = await supabaseClient.from('productos').delete().eq('id', id);
-        if (error) return mostrarNotificacion('No se pudo eliminar. ' + mensajeError(error), 'error');
-        mostrarNotificacion('Producto eliminado', 'success');
+        const { error } = await supabaseClient.from('productos').update({ activo: false }).eq('id', id);
+        if (error) return mostrarNotificacion('No se pudo quitar. ' + mensajeError(error), 'error');
+
+        mostrarNotificacion('Producto quitado del listado', 'success');
         cargarProductosAdmin();
+    };
+
+    window.restaurarProducto = async function (id) {
+        const { error } = await supabaseClient.from('productos').update({ activo: true }).eq('id', id);
+        if (error) return mostrarNotificacion('No se pudo restaurar. ' + mensajeError(error), 'error');
+
+        mostrarNotificacion('Producto restaurado', 'success');
+        cargarProductosAdmin();
+    };
+
+    window.cambiarVerOcultos = function (valor) {
+        mostrarOcultos = !!valor;
+        filtrarProductos();
     };
 
     // ==================== VER / EDITAR PRODUCTO ====================
@@ -721,6 +751,17 @@ document.addEventListener('DOMContentLoaded', () => {
     const inputStockCantidad = document.getElementById('stockCantidad');
     if (inputStockCantidad) inputStockCantidad.addEventListener('input', actualizarResumenStock);
 
+    // Borra un registro y comprueba que realmente se borró
+    // (RLS puede bloquear el DELETE sin devolver error).
+    async function borrarRegistro(tabla, id) {
+        const { error } = await supabaseClient.from(tabla).delete().eq('id', id);
+        if (error) return { ok: false, mensaje: mensajeError(error) };
+
+        const { data } = await supabaseClient.from(tabla).select('id').eq('id', id).limit(1);
+        if (data && data.length > 0) return { ok: false, mensaje: 'la base de datos no permitió el borrado.' };
+
+        return { ok: true };
+    }
     // ==================== GESTIÓN DE CLIENTES ====================
     window.guardarCliente = async function() {
         const tipo_documento_id = document.getElementById('cliTipoDoc').value || null, doc = document.getElementById('cliDoc').value.trim();
@@ -748,8 +789,8 @@ document.addEventListener('DOMContentLoaded', () => {
         });
         if (!confirmado) return;
 
-        const { error } = await supabaseClient.from('clientes').delete().eq('id', id);
-        if (error) return mostrarNotificacion('No se pudo eliminar. ' + mensajeError(error), 'error');
+        const resultado = await borrarRegistro('clientes', id);
+        if (!resultado.ok) return mostrarNotificacion('No se pudo eliminar. ' + resultado.mensaje, 'error');
         mostrarNotificacion('Cliente eliminado', 'success');
         cargarClientes();
     };
@@ -781,8 +822,8 @@ document.addEventListener('DOMContentLoaded', () => {
         });
         if (!confirmado) return;
 
-        const { error } = await supabaseClient.from('proveedores').delete().eq('id', id);
-        if (error) return mostrarNotificacion('No se pudo eliminar. ' + mensajeError(error), 'error');
+        const resultado = await borrarRegistro('proveedores', id);
+        if (!resultado.ok) return mostrarNotificacion('No se pudo eliminar. ' + resultado.mensaje, 'error');
         mostrarNotificacion('Proveedor eliminado', 'success');
         cargarProveedores();
         cargarDatosIniciales();
@@ -807,8 +848,8 @@ document.addEventListener('DOMContentLoaded', () => {
         });
         if (!confirmado) return;
 
-        const { error } = await supabaseClient.from('categorias').delete().eq('id', id);
-        if (error) return mostrarNotificacion('No se pudo eliminar. ' + mensajeError(error), 'error');
+        const resultado = await borrarRegistro('categorias', id);
+        if (!resultado.ok) return mostrarNotificacion('No se pudo eliminar. ' + resultado.mensaje, 'error');
         mostrarNotificacion('Categoría eliminada', 'success');
         cargarAjustes();
         cargarDatosIniciales();
@@ -833,8 +874,8 @@ document.addEventListener('DOMContentLoaded', () => {
         });
         if (!confirmado) return;
 
-        const { error } = await supabaseClient.from('subcategorias').delete().eq('id', id);
-        if (error) return mostrarNotificacion('No se pudo eliminar. ' + mensajeError(error), 'error');
+        const resultado = await borrarRegistro('subcategorias', id);
+        if (!resultado.ok) return mostrarNotificacion('No se pudo eliminar. ' + resultado.mensaje, 'error');
         mostrarNotificacion('Subcategoría eliminada', 'success');
         cargarAjustes();
     };
@@ -855,8 +896,8 @@ document.addEventListener('DOMContentLoaded', () => {
         });
         if (!confirmado) return;
 
-        const { error } = await supabaseClient.from('ubicaciones').delete().eq('id', id);
-        if (error) return mostrarNotificacion('No se pudo eliminar. ' + mensajeError(error), 'error');
+        const resultado = await borrarRegistro('ubicaciones', id);
+        if (!resultado.ok) return mostrarNotificacion('No se pudo eliminar. ' + resultado.mensaje, 'error');
         mostrarNotificacion('Ubicación eliminada', 'success');
         cargarAjustes();
         cargarDatosIniciales();
@@ -879,8 +920,8 @@ document.addEventListener('DOMContentLoaded', () => {
         });
         if (!confirmado) return;
 
-        const { error } = await supabaseClient.from('unidades_medida').delete().eq('id', id);
-        if (error) return mostrarNotificacion('No se pudo eliminar. ' + mensajeError(error), 'error');
+        const resultado = await borrarRegistro('unidades_medida', id);
+        if (!resultado.ok) return mostrarNotificacion('No se pudo eliminar. ' + resultado.mensaje, 'error');
         mostrarNotificacion('Unidad eliminada', 'success');
         cargarAjustes();
         cargarDatosIniciales();
@@ -903,8 +944,8 @@ document.addEventListener('DOMContentLoaded', () => {
         });
         if (!confirmado) return;
 
-        const { error } = await supabaseClient.from('tipos_documento').delete().eq('id', id);
-        if (error) return mostrarNotificacion('No se pudo eliminar. ' + mensajeError(error), 'error');
+        const resultado = await borrarRegistro('tipos_documento', id);
+        if (!resultado.ok) return mostrarNotificacion('No se pudo eliminar. ' + resultado.mensaje, 'error');
         mostrarNotificacion('Tipo de documento eliminado', 'success');
         cargarAjustes();
         cargarDatosIniciales();

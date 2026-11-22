@@ -555,6 +555,20 @@ main { padding: 24px; max-width: 1600px; margin: 0 auto; }
 .fila-anulada td { color: #9ca3af; }
 .fila-anulada td b { text-decoration: line-through; }
 
+.fila-oculta td { opacity: 0.55; }
+
+.toggle-ocultos {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 13px;
+    color: #4b5563;
+    font-weight: 500;
+    cursor: pointer;
+    white-space: nowrap;
+}
+.toggle-ocultos input { width: 16px; height: 16px; cursor: pointer; }
+
 @media (max-width: 768px) {
     .toolbar-ventas { flex-direction: column; align-items: stretch; }
     .filtro-ventas { align-items: stretch; flex-direction: column; }

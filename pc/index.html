@@ -218,6 +218,7 @@
 
                     <div class="table-toolbar">
                         <div class="search-box"><input type="text" id="searchProduct" placeholder="🔍 Buscar por código, nombre o categoría..." oninput="filtrarProductos()"></div>
+                        <label class="toggle-ocultos"><input type="checkbox" id="chkVerOcultos" onchange="cambiarVerOcultos(this.checked)"> Ver ocultos</label>
                         <div class="pagination-controls"><label>Mostrar:</label><select id="itemsPerPage" onchange="cambiarItemsPorPagina(this.value)"><option value="5">5</option><option value="10" selected>10</option><option value="25">25</option><option value="50">50</option><option value="100">100</option></select></div>
                     </div>
 
