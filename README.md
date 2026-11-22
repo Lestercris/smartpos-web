@@ -27,6 +27,10 @@ pc/
   js/pos.js               Lógica del POS, productos, clientes, proveedores, ajustes, comprobantes
   js/ventas.js            Pestaña Ventas: reportes, detalle y exportación a Excel
   js/realtime.js          Escucha los códigos enviados por el móvil
+  js/offline.js           Modo sin conexión: catálogo local, cola de ventas y sincronización
+  sw.js                   Service worker (caché de la app)
+  manifest.json           Instalación como aplicación (PWA)
+  icon.svg                Icono de la app
   modulos/ticket/         Ticket imprimible con código de barras
   modulos/etiquetas/      Generador de etiquetas de precio con código de barras
 movil/
@@ -47,6 +51,7 @@ movil/
 | Clientes / Proveedores | Altas y bajas con tipo y número de documento |
 | Ajustes | Categorías, subcategorías, ubicaciones, unidades de medida, tipos de documento, IVA y datos del negocio |
 | Escáner móvil | Envía el código al PC en tiempo real; los folios `T-xxxxxx` abren el comprobante |
+| Sin conexión / PWA | Instalable en PC y móvil; guarda el catálogo y encola las ventas para enviarlas al volver internet |
 
 ## Configuración
 
@@ -92,3 +97,12 @@ Los scripts de corrección de esquema están en [`sql/`](sql/). Hay que ejecutar
 - Descuentos por línea o por venta.
 - Modo offline / PWA para seguir vendiendo sin internet.
 - Usuarios con login y roles en lugar del usuario fijo "Vendedor Demo".
+
+## Modo sin conexión (PWA)
+
+- La app se puede instalar desde el navegador (icono de instalar en la barra de direcciones).
+- El service worker (sw.js) guarda la aplicación y las librerías para abrirla sin internet.
+- Al arrancar se guarda el catálogo (productos y promociones) en IndexedDB.
+- Sin conexión se puede vender: la venta se encola y se sincroniza automáticamente al volver internet (o al pulsar el aviso del encabezado).
+- El ticket de una venta offline es provisional (P1, P2...) y lleva el aviso "Pendiente de enviar".
+- Si cambias archivos del shell, sube la versión en CACHE dentro de sw.js para forzar la actualización.

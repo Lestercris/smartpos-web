@@ -61,6 +61,12 @@
     display: block;
     margin: 0 auto 6px;
 }
+.ticket-aviso {
+    color: #b91c1c;
+    font-weight: bold;
+    font-size: 11px;
+    margin-top: 6px;
+}
 
 .ticket-info { margin: 15px 0; font-size: 12px; }
 

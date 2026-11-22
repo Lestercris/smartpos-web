@@ -61,6 +61,12 @@ const moduloTicket = {
             if (el) el.style.display = valor ? 'block' : 'none';
         });
 
+        const aviso = document.getElementById('tk-aviso');
+        if (aviso) {
+            aviso.textContent = venta.aviso || '';
+            aviso.style.display = venta.aviso ? 'block' : 'none';
+        }
+
         // 1. Llenar los datos básicos
         document.getElementById('tk-id').textContent = String(venta.id).padStart(6, '0');
         

@@ -57,6 +57,10 @@ h1, h2, h3 { color: #111827; font-weight: 700; }
 .status.disconnected::before { background-color: #dc2626; }
 .status.connected { background-color: #dcfce7; color: #166534; }
 .status.connected::before { background-color: #16a34a; }
+.status.offline { background-color: #fef3c7; color: #92400e; }
+.status.offline::before { background-color: #f59e0b; }
+.status.pendiente { background-color: #e0e7ff; color: #3730a3; }
+.status.pendiente::before { background-color: #6366f1; }
 
 /* ================= BOTONES ================= */
 .btn {

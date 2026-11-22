@@ -22,6 +22,21 @@ document.addEventListener('DOMContentLoaded', () => {
     cargarPromociones();
     cargarClientesVenta();
 
+    if (typeof Offline !== 'undefined') {
+        Offline.iniciar();
+        cargarCatalogoOffline();
+    }
+
+    // Guarda el catálogo en el navegador para poder vender sin conexión
+    async function cargarCatalogoOffline() {
+        try {
+            const { data } = await supabaseClient.from('productos').select('*').order('nombre');
+            if (data) await Offline.guardarProductos(data);
+        } catch (err) {
+            /* sin conexión: se usa lo que ya estuviera guardado */
+        }
+    }
+
     // Datos del negocio para el ticket (se guardan en smartpos_config)
     const NEGOCIO = { nombre: 'SmartPOS', documento: '', direccion: '', telefono: '', logo: '' };
     window.SMARTPOS_NEGOCIO = NEGOCIO;
@@ -161,10 +176,15 @@ document.addEventListener('DOMContentLoaded', () => {
                 .select('*')
                 .order('created_at', { ascending: false });
 
-            if (error) return;
+            if (error) throw error;
+
             listaPromociones = data || [];
+            if (typeof Offline !== 'undefined') Offline.guardarDatos('promociones', listaPromociones);
         } catch (err) {
-            console.warn('No se pudieron cargar las promociones:', err);
+            if (typeof Offline !== 'undefined') {
+                const guardadas = await Offline.obtenerDatos('promociones');
+                if (guardadas) listaPromociones = guardadas;
+            }
         }
     }
 
@@ -459,8 +479,29 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // ==================== LÓGICA DE CAJA Y TURNOS ====================
     async function verificarEstadoCaja() {
-        const { data, error } = await supabaseClient.from('turnos').select('*').eq('estado', 'ABIERTO').order('fecha_apertura', { ascending: false }).limit(1);
-        
+        let data = null;
+
+        try {
+            const respuesta = await supabaseClient.from('turnos')
+                .select('*')
+                .eq('estado', 'ABIERTO')
+                .order('fecha_apertura', { ascending: false })
+                .limit(1);
+
+            if (respuesta.error) throw respuesta.error;
+
+            data = respuesta.data;
+            localStorage.setItem('smartpos_turno', JSON.stringify(data && data[0] ? data[0] : null));
+        } catch (err) {
+            try {
+                const guardado = localStorage.getItem('smartpos_turno');
+                const turno = guardado ? JSON.parse(guardado) : null;
+                data = turno ? [turno] : [];
+            } catch (errorLectura) {
+                data = [];
+            }
+        }
+
         if (data && data.length > 0) {
             turnoActual = data[0];
             const btn = document.getElementById('btnCaja');
@@ -601,10 +642,19 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!turnoActual) return mostrarNotificacion('Debes abrir la caja primero', 'error');
         
         const codigo = inputCode.value.trim(); if (!codigo) return;
-        const { data, error } = await supabaseClient.from('productos').select('*').eq('codigo', codigo).limit(1);
-        if (error || !data || data.length === 0) { inputCode.classList.add('input-error'); setTimeout(() => inputCode.classList.remove('input-error'), 800); inputCode.value = ''; return; }
-        
-        const producto = data[0];
+
+        let producto = null;
+
+        try {
+            const { data, error } = await supabaseClient.from('productos').select('*').eq('codigo', codigo).limit(1);
+            if (!error && data && data.length) producto = data[0];
+        } catch (err) {
+            /* sin conexión: se busca en la copia local */
+        }
+
+        if (!producto && typeof Offline !== 'undefined') producto = await Offline.productoPorCodigo(codigo);
+
+        if (!producto) { inputCode.classList.add('input-error'); setTimeout(() => inputCode.classList.remove('input-error'), 800); inputCode.value = ''; return; }
         if (producto.activo === false) {
             inputCode.classList.add('input-error');
             setTimeout(() => inputCode.classList.remove('input-error'), 800);
@@ -777,6 +827,80 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     };
 
+    // Venta sin conexión: se guarda en el navegador y se envía al volver internet
+    async function cobrarSinConexion(datos) {
+        const venta = {
+            fecha: new Date().toISOString(),
+            usuario: 'Vendedor Demo',
+            items: datos.items.map(item => ({
+                id: item.id,
+                codigo: item.codigo,
+                nombre: item.nombre,
+                cantidad: item.cantidad,
+                precio: item.precio,
+                total: item.total,
+                descuento: item.descuento,
+                promo_tipo: item.promo_tipo,
+                lleva: item.lleva,
+                paga: item.paga
+            })),
+            subtotal: datos.subtotal,
+            iva: datos.iva,
+            total: datos.total,
+            descuento: datos.descuento,
+            metodo_pago: metodoPago,
+            monto_recibido: datos.recibido,
+            vuelto: datos.vuelto,
+            cliente_id: datos.clienteId,
+            cliente_nombre: datos.clienteNombre,
+            precios: datos.items.map(item => ({
+                id: item.id,
+                precio: item.cantidad ? Number((item.total / item.cantidad).toFixed(4)) : item.precio
+            }))
+        };
+
+        const localId = await Offline.encolarVenta(venta);
+
+        if (localId == null) {
+            return mostrarNotificacion('No se pudo guardar la venta sin conexión', 'error');
+        }
+
+        await Offline.descontarStock(datos.items);
+
+        mostrarNotificacion(`Venta guardada sin conexión (#${localId}). Se enviará al volver internet.`, 'success');
+
+        carrito = [];
+        renderCarrito();
+        window.cerrarModalCobro();
+        Offline.actualizarBadge();
+
+        if (typeof moduloTicket !== 'undefined') {
+            try {
+                moduloTicket.mostrar({
+                    id: 'P' + localId,
+                    usuario: 'Vendedor Demo',
+                    items: datos.items.map(item => ({
+                        ...item,
+                        nombre: item.promo_tipo === 'NXM'
+                            ? `${item.nombre} (${item.lleva}x${item.paga})`
+                            : (item.descuento ? `${item.nombre} (-${item.descuento}%)` : item.nombre)
+                    })),
+                    subtotal: datos.subtotal,
+                    iva: datos.iva,
+                    total: datos.total,
+                    descuento: datos.descuento,
+                    metodo_pago: metodoPago,
+                    monto_recibido: datos.recibido,
+                    vuelto: datos.vuelto,
+                    cliente: datos.clienteNombre,
+                    aviso: 'Venta guardada sin conexión. Pendiente de enviar.'
+                });
+            } catch (err) {
+                console.warn('No se pudo mostrar el ticket provisional:', err);
+            }
+        }
+    }
+
     window.confirmarCobro = async function () {
         if (!cobroPendiente) return;
 
@@ -798,6 +922,11 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         const boton = document.getElementById('btnConfirmarCobro');
+
+        if (typeof Offline !== 'undefined' && !navigator.onLine) {
+            await cobrarSinConexion({ items, subtotal, iva, total, descuento, clienteId, clienteNombre, recibido, vuelto });
+            return;
+        }
 
         try {
             if (boton) boton.disabled = true;
