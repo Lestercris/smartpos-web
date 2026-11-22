@@ -38,6 +38,16 @@ const moduloTicket = {
         document.getElementById('tk-fecha').textContent = fecha.toLocaleString();
         document.getElementById('tk-vendedor').textContent = venta.usuario || '-';
 
+        const filaCliente = document.getElementById('tk-cliente-row');
+        if (filaCliente) {
+            if (venta.cliente) {
+                document.getElementById('tk-cliente').textContent = venta.cliente;
+                filaCliente.style.display = 'block';
+            } else {
+                filaCliente.style.display = 'none';
+            }
+        }
+
         // 2. Llenar la tabla de productos
         const tbody = document.getElementById('tk-productos');
         tbody.innerHTML = '';

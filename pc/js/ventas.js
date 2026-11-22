@@ -265,6 +265,7 @@ const VentasModule = (() => {
         document.getElementById('vd-info').innerHTML = `
             <b>Fecha:</b> ${fecha(venta.created_at)}<br>
             <b>Vendedor:</b> ${escapar(venta.usuario || '-')}<br>
+            ${venta.cliente_nombre ? `<b>Cliente:</b> ${escapar(venta.cliente_nombre)}<br>` : ''}
             <b>Pago:</b> ${etiquetaPago(venta.metodo_pago)}${venta.vuelto > 0 ? ` · Vuelto ${dinero(venta.vuelto)}` : ''}<br>
             <b>Estado:</b> <span class="badge-estado ${anulada ? 'badge-anulada' : 'badge-emitida'}">${anulada ? 'Anulada' : 'Válida'}</span>
         `;
@@ -342,7 +343,8 @@ const VentasModule = (() => {
                 total,
                 metodo_pago: venta.metodo_pago,
                 monto_recibido: venta.monto_recibido,
-                vuelto: venta.vuelto
+                vuelto: venta.vuelto,
+                cliente: venta.cliente_nombre
             });
         } catch (err) {
             toast('No se pudo imprimir el ticket', 'error');

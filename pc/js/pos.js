@@ -9,6 +9,7 @@ document.addEventListener('DOMContentLoaded', () => {
     let todosLosProductos = [], productosFiltrados = [], paginaActual = 1, itemsPorPagina = 10;
     let mostrarOcultos = false;
     let listaPromociones = [];
+    let listaClientesVenta = [];
 
     const inputCode = document.getElementById('posCode');
     const cartBody = document.getElementById('cartBody');
@@ -18,6 +19,7 @@ document.addEventListener('DOMContentLoaded', () => {
     verificarEstadoCaja(); 
     cargarConfiguracion();
     cargarPromociones();
+    cargarClientesVenta();
 
     // IVA guardado en la base (editable desde Ajustes)
     async function cargarConfiguracion() {
@@ -490,6 +492,7 @@ document.addEventListener('DOMContentLoaded', () => {
         document.getElementById('cobroTotal').textContent = '$' + total.toFixed(2);
         document.getElementById('cobroRecibido').value = '';
         window.elegirMetodoPago('EFECTIVO');
+        cargarClientesVenta();
         document.getElementById('modalCobro').classList.remove('hidden');
 
         const campo = document.getElementById('cobroRecibido');
@@ -549,6 +552,12 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!cobroPendiente) return;
 
         const { items, subtotal, iva, total } = cobroPendiente;
+
+        const selectCliente = document.getElementById('cobroCliente');
+        const clienteId = selectCliente && selectCliente.value ? Number(selectCliente.value) : null;
+        const clienteElegido = clienteId ? listaClientesVenta.find(c => Number(c.id) === clienteId) : null;
+        const clienteNombre = clienteElegido ? clienteElegido.nombre : null;
+
         let recibido = total;
         let vuelto = 0;
 
@@ -592,6 +601,15 @@ document.addEventListener('DOMContentLoaded', () => {
                 else console.warn('Falta ejecutar sql/008 para guardar el total con IVA.');
             }
 
+            if (clienteId) {
+                const guardado = await supabaseClient.rpc('registrar_cliente', {
+                    p_venta_id: data.venta_id,
+                    p_cliente_id: clienteId,
+                    p_nombre: clienteNombre
+                });
+                if (guardado.error) console.warn('No se pudo guardar el cliente:', guardado.error.message);
+            }
+
             mostrarNotificacion(`¡Venta #${data.venta_id}!`, 'success');
 
             // El precio de cada línea debe ser el rebajado que se cobró
@@ -618,7 +636,8 @@ document.addEventListener('DOMContentLoaded', () => {
                     total,
                     metodo_pago: metodoPago,
                     monto_recibido: recibido,
-                    vuelto
+                    vuelto,
+                    cliente: clienteNombre
                 });
             }
             if (!document.getElementById('admin-view').classList.contains('hidden')) cargarProductosAdmin();
@@ -1139,6 +1158,29 @@ document.addEventListener('DOMContentLoaded', () => {
 
         return { ok: true };
     }
+    // ==================== CLIENTES EN LA VENTA ====================
+    async function cargarClientesVenta() {
+        try {
+            const { data, error } = await supabaseClient
+                .from('clientes')
+                .select('id, nombre')
+                .order('nombre');
+
+            if (error) return;
+            listaClientesVenta = data || [];
+
+            const select = document.getElementById('cobroCliente');
+            if (select) {
+                const elegido = select.value;
+                select.innerHTML = '<option value="">Consumidor final</option>' +
+                    listaClientesVenta.map(c => `<option value="${c.id}">${escaparTexto(c.nombre)}</option>`).join('');
+                select.value = elegido;
+            }
+        } catch (err) {
+            console.warn('No se pudieron cargar los clientes:', err);
+        }
+    }
+
     // ==================== GESTIÓN DE CLIENTES ====================
     window.guardarCliente = async function() {
         const tipo_documento_id = document.getElementById('cliTipoDoc').value || null, doc = document.getElementById('cliDoc').value.trim();

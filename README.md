@@ -38,7 +38,7 @@ movil/
 
 | Módulo | Qué hace |
 | --- | --- |
-| POS | Carrito por código de barras o teclado, cantidades, IVA por producto, forma de pago (efectivo/tarjeta/transferencia) y cálculo de vuelto |
+| POS | Carrito por código de barras o teclado, cantidades, IVA por producto, cliente en la venta, forma de pago (efectivo/tarjeta/transferencia) y cálculo de vuelto |
 | Caja | Apertura/cierre de turno, monto inicial, arqueo y diferencia (las ventas anuladas no suman) |
 | Productos | Alta, imagen, stock mínimo, precios, margen, IVA, edición con vista grande de imagen, duplicar, entrada/salida de stock con historial, importar/exportar Excel, etiquetas |
 | Comprobantes | Búsqueda por escáner o folio, devoluciones parciales y anulación completa |
@@ -81,12 +81,12 @@ Los scripts de corrección de esquema están en [`sql/`](sql/). Hay que ejecutar
 9. `sql/009_configuracion_iva.sql` — tabla `smartpos_config` para guardar el porcentaje de IVA editable desde Ajustes.
 10. `sql/010_promociones.sql` — tabla `promociones` (rebajas por producto con fechas) y función para dejar el precio de las líneas en lo realmente cobrado.
 11. `sql/011_permisos_tablas.sql` — permisos y políticas RLS de las tablas nuevas (`promociones`, `movimientos_stock`, `smartpos_config`).
+12. `sql/012_cliente_venta.sql` — cliente asociado a cada venta (`cliente_id` y `cliente_nombre`).
 
 > La clave `anon` es pública por diseño; la seguridad real depende de las políticas RLS configuradas en Supabase.
 
 ## Pendientes sugeridos
 
-- Cliente asociado a la venta.
 - Datos fiscales del negocio en el ticket (nombre, RIF/NIT, dirección, logo).
 - Descuentos por línea o por venta.
 - Modo offline / PWA para seguir vendiendo sin internet.

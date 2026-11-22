@@ -7,8 +7,8 @@
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://cdn.sheetjs.com/xlsx-0.20.0/package/dist/xlsx.full.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.6/dist/JsBarcode.all.min.js"></script>
-    <link rel="stylesheet" href="css/styles.css?v=20261122h">
-    <link rel="stylesheet" href="modulos/ticket/ticket.css?v=20261122h">
+    <link rel="stylesheet" href="css/styles.css?v=20261122i">
+    <link rel="stylesheet" href="modulos/ticket/ticket.css?v=20261122i">
 </head>
 <body>
     <header class="app-header">
@@ -412,6 +412,13 @@
 
                 <div class="cobro-total" id="cobroTotal">$0.00</div>
 
+                <div class="form-field mb-20">
+                    <label>Cliente</label>
+                    <select id="cobroCliente">
+                        <option value="">Consumidor final</option>
+                    </select>
+                </div>
+
                 <div class="cobro-metodos">
                     <button type="button" class="cobro-metodo activo" id="pagoEfectivo" onclick="elegirMetodoPago('EFECTIVO')">💵 Efectivo</button>
                     <button type="button" class="cobro-metodo" id="pagoTarjeta" onclick="elegirMetodoPago('TARJETA')">💳 Tarjeta</button>
@@ -524,10 +531,10 @@
 
     </main>
 
-    <script src="js/db.js?v=20261122h"></script>
-    <script src="js/pos.js?v=20261122h"></script>
-    <script src="js/realtime.js?v=20261122h"></script>
-    <script src="modulos/ticket/ticket.js?v=20261122h"></script>
-    <script src="js/ventas.js?v=20261122h"></script>
+    <script src="js/db.js?v=20261122i"></script>
+    <script src="js/pos.js?v=20261122i"></script>
+    <script src="js/realtime.js?v=20261122i"></script>
+    <script src="modulos/ticket/ticket.js?v=20261122i"></script>
+    <script src="js/ventas.js?v=20261122i"></script>
 </body>
 </html>
