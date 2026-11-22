@@ -1085,6 +1085,15 @@ document.addEventListener('DOMContentLoaded', () => {
     window.cargarProductosAdmin = async function() {
         const tbody = document.getElementById('productTableBody'); if (!tbody) return;
         tbody.innerHTML = '<tr><td colspan="14" class="empty">Cargando...</td></tr>';
+
+        // Sin conexión: se muestra el catálogo guardado en el navegador
+        const sinRed = (typeof navigator !== 'undefined' && navigator.onLine === false);
+        if (sinRed && typeof Offline !== 'undefined') {
+            todosLosProductos = await Offline.productosCache();
+            filtrarProductos();
+            return;
+        }
+
         const { data, error } = await supabaseClient.from('productos').select(`*, categorias (nombre), proveedores (nombre), unidades_medida (abreviatura)`).order('nombre');
         if (error) return tbody.innerHTML = '<tr><td colspan="14" class="empty" style="color:red;">Error</td></tr>';
         todosLosProductos = data || [];

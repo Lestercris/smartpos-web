@@ -47,13 +47,26 @@ const channel = supabaseClient
         }
     })
     .subscribe((status) => {
-        const statusEl = document.getElementById('connection-status');
-        if (status === 'SUBSCRIBED') {
-            statusEl.textContent = '🟢 En línea';
-            statusEl.className = 'status connected';
-            console.log("✅ Conectado a Supabase Realtime");
-        } else {
-            statusEl.textContent = '🔴 Desconectado';
-            statusEl.className = 'status disconnected';
-        }
+        actualizarEstadoConexion(status === 'SUBSCRIBED');
     });
+
+// El estado debe reflejar también cuándo se cae la red
+function actualizarEstadoConexion(conectado) {
+    const statusEl = document.getElementById('connection-status');
+    if (!statusEl) return;
+
+    if (conectado) {
+        statusEl.textContent = '🟢 En línea';
+        statusEl.className = 'status connected';
+    } else {
+        statusEl.textContent = '🔴 Desconectado';
+        statusEl.className = 'status disconnected';
+    }
+}
+
+window.addEventListener('offline', () => actualizarEstadoConexion(false));
+window.addEventListener('online', () => {
+    // El canal se reconecta solo; mostramos "Conectando" hasta que lo confirme
+    const statusEl = document.getElementById('connection-status');
+    if (statusEl && channel && channel.state === 'joined') actualizarEstadoConexion(true);
+});

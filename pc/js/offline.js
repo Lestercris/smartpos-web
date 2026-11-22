@@ -64,6 +64,10 @@ const Offline = (() => {
         }
     }
 
+    async function productosCache() {
+        try { return await todos('productos'); } catch (err) { return []; }
+    }
+
     async function guardarDatos(clave, valor) {
         try { await guardar('datos', { clave, valor }); } catch (err) { /* sin cache */ }
     }
@@ -236,6 +240,7 @@ const Offline = (() => {
         actualizarBadge,
         guardarProductos,
         productoPorCodigo,
+        productosCache,
         guardarDatos,
         obtenerDatos,
         descontarStock,
