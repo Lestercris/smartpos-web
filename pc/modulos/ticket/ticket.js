@@ -43,8 +43,16 @@ const moduloTicket = {
 
         const logo = document.getElementById('tk-logo');
         if (logo) {
-            if (negocio.logo) {
-                logo.src = negocio.logo;
+            let logoUrl = negocio.logo || '';
+
+            try {
+                const local = localStorage.getItem('smartpos_logo');
+                if (local) logoUrl = local;
+            } catch (err) { /* sin localStorage */ }
+
+            if (logoUrl) {
+                logo.onerror = () => { logo.style.display = 'none'; };
+                logo.src = logoUrl;
                 logo.style.display = 'block';
             } else {
                 logo.removeAttribute('src');

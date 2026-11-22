@@ -68,10 +68,45 @@ document.addEventListener('DOMContentLoaded', () => {
             NEGOCIO.telefono = valores.negocio_telefono || '';
             NEGOCIO.logo = valores.negocio_logo || '';
 
+            cachearLogo(NEGOCIO.logo);
             llenarFormularioNegocio();
             if (todosLosProductos.length) filtrarProductos();
         } catch (err) {
             console.warn('No se pudo cargar la configuración:', err);
+        }
+    }
+
+    function leerArchivoComoDataUrl(archivo) {
+        return new Promise((resolver) => {
+            const lector = new FileReader();
+            lector.onload = () => resolver(lector.result);
+            lector.onerror = () => resolver(null);
+            lector.readAsDataURL(archivo);
+        });
+    }
+
+    // Guarda una copia del logo en el navegador para que el ticket lo muestre sin internet
+    async function cachearLogo(url) {
+        if (!url) return;
+
+        try {
+            const guardadaUrl = localStorage.getItem('smartpos_logo_url');
+            if (guardadaUrl === url && localStorage.getItem('smartpos_logo')) return;
+
+            const respuesta = await fetch(url);
+            const blob = await respuesta.blob();
+            const lector = new FileReader();
+
+            lector.onload = () => {
+                try {
+                    localStorage.setItem('smartpos_logo', lector.result);
+                    localStorage.setItem('smartpos_logo_url', url);
+                } catch (err) { /* sin espacio */ }
+            };
+
+            lector.readAsDataURL(blob);
+        } catch (err) {
+            /* sin conexión: se usará la copia que ya hubiera */
         }
     }
 
@@ -112,6 +147,14 @@ document.addEventListener('DOMContentLoaded', () => {
                     .from('productos-imagenes')
                     .getPublicUrl(nombreArchivo);
                 logo = url.publicUrl;
+
+                const dataUrl = await leerArchivoComoDataUrl(archivo);
+                if (dataUrl) {
+                    try {
+                        localStorage.setItem('smartpos_logo', dataUrl);
+                        localStorage.setItem('smartpos_logo_url', logo);
+                    } catch (err) { /* sin espacio */ }
+                }
             }
 
             const filas = [
