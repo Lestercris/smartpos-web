@@ -1867,23 +1867,77 @@ document.addEventListener('DOMContentLoaded', () => {
     async function cargarAjustes() {
         cargarConfiguracion();
 
-        const { data: cats } = await supabaseClient.from('categorias').select('*').order('nombre');
-        document.getElementById('listaCategorias').innerHTML = cats.map(c => `<li>${c.nombre} <button onclick="eliminarCategoria(${c.id})" class="btn-eliminar">X</button></li>`).join('');
-        
+        let cats = [], subcats = [], ubis = [], umeds = [], tipos = [];
+
+        try {
+            const respuestas = await Promise.all([
+                supabaseClient.from('categorias').select('*').order('nombre'),
+                supabaseClient.from('subcategorias').select('*').order('nombre'),
+                supabaseClient.from('ubicaciones').select('*').order('nombre'),
+                supabaseClient.from('unidades_medida').select('*').order('nombre'),
+                supabaseClient.from('tipos_documento').select('*').order('abreviatura')
+            ]);
+
+            const conError = respuestas.find(respuesta => respuesta.error);
+            if (conError) throw conError.error;
+
+            cats = respuestas[0].data || [];
+            subcats = respuestas[1].data || [];
+            ubis = respuestas[2].data || [];
+            umeds = respuestas[3].data || [];
+            tipos = respuestas[4].data || [];
+
+            if (typeof Offline !== 'undefined') {
+                Offline.guardarDatos('subcategorias', subcats);
+            }
+        } catch (err) {
+            // Sin conexión: se usa lo guardado en el navegador
+            if (typeof Offline !== 'undefined') {
+                const cache = await Offline.obtenerDatos('catalogos');
+                if (cache) {
+                    cats = cache.categorias || [];
+                    ubis = cache.ubicaciones || [];
+                    umeds = cache.unidades || [];
+                    tipos = cache.tipos || [];
+                }
+
+                const subGuardadas = await Offline.obtenerDatos('subcategorias');
+                if (subGuardadas) subcats = subGuardadas;
+            }
+        }
+
+        const nombreCategoria = id => (cats.find(c => String(c.id) === String(id)) || {}).nombre || '-';
+
+        const listaCategoriasEl = document.getElementById('listaCategorias');
+        if (listaCategoriasEl) {
+            listaCategoriasEl.innerHTML = cats.map(c => `<li>${c.nombre} <button onclick="eliminarCategoria(${c.id})" class="btn-eliminar">X</button></li>`).join('');
+        }
+
         const selCatPadre = document.getElementById('newSubCatPadre');
         if (selCatPadre) selCatPadre.innerHTML = '<option value="">Seleccione categoría...</option>' + cats.map(c => `<option value="${c.id}">${c.nombre}</option>`).join('');
 
-        const { data: subcats } = await supabaseClient.from('subcategorias').select('*, categorias(nombre)').order('nombre');
-        if (subcats) document.getElementById('listaSubcategorias').innerHTML = subcats.map(s => `<li><span><b>${s.categorias ? s.categorias.nombre : '-'}</b> > ${s.nombre}</span> <button onclick="eliminarSubcategoria(${s.id})" class="btn-eliminar">X</button></li>`).join('');
+        const listaSubcategoriasEl = document.getElementById('listaSubcategorias');
+        if (listaSubcategoriasEl) {
+            listaSubcategoriasEl.innerHTML = subcats.map(s => {
+                const categoria = s.categorias ? s.categorias.nombre : nombreCategoria(s.categoria_id);
+                return `<li><span><b>${categoria}</b> > ${s.nombre}</span> <button onclick="eliminarSubcategoria(${s.id})" class="btn-eliminar">X</button></li>`;
+            }).join('');
+        }
 
-        const { data: ubis } = await supabaseClient.from('ubicaciones').select('*').order('nombre');
-        document.getElementById('listaUbicaciones').innerHTML = ubis.map(u => `<li>${u.nombre} <button onclick="eliminarUbicacion(${u.id})" class="btn-eliminar">X</button></li>`).join('');
+        const listaUbicacionesEl = document.getElementById('listaUbicaciones');
+        if (listaUbicacionesEl) {
+            listaUbicacionesEl.innerHTML = ubis.map(u => `<li>${u.nombre} <button onclick="eliminarUbicacion(${u.id})" class="btn-eliminar">X</button></li>`).join('');
+        }
 
-        const { data: umeds } = await supabaseClient.from('unidades_medida').select('*').order('nombre');
-        document.getElementById('listaUMedidas').innerHTML = umeds.map(u => `<li>${u.abreviatura} - ${u.nombre} <button onclick="eliminarUMedida(${u.id})" class="btn-eliminar">X</button></li>`).join('');
+        const listaUMedidasEl = document.getElementById('listaUMedidas');
+        if (listaUMedidasEl) {
+            listaUMedidasEl.innerHTML = umeds.map(u => `<li>${u.abreviatura} - ${u.nombre} <button onclick="eliminarUMedida(${u.id})" class="btn-eliminar">X</button></li>`).join('');
+        }
 
-        const { data: tipos } = await supabaseClient.from('tipos_documento').select('*').order('abreviatura');
-        document.getElementById('listaTiposDoc').innerHTML = tipos.map(t => `<li>${t.abreviatura} - ${t.nombre} <button onclick="eliminarTipoDoc(${t.id})" class="btn-eliminar">X</button></li>`).join('');
+        const listaTiposDocEl = document.getElementById('listaTiposDoc');
+        if (listaTiposDocEl) {
+            listaTiposDocEl.innerHTML = tipos.map(t => `<li>${t.abreviatura} - ${t.nombre} <button onclick="eliminarTipoDoc(${t.id})" class="btn-eliminar">X</button></li>`).join('');
+        }
     }
 
     // ==================== EXCEL (IMPORTAR / EXPORTAR) ====================
