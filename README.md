@@ -45,7 +45,7 @@ movil/
 | Ventas | Reportes por período, KPIs, detalle, reimpresión de ticket y exportación a Excel |
 | Promociones | Rebajas por producto o para todos, con fechas; el POS aplica la mejor vigente y guarda el precio rebajado |
 | Clientes / Proveedores | Altas y bajas con tipo y número de documento |
-| Ajustes | Categorías, subcategorías, ubicaciones, unidades de medida y tipos de documento |
+| Ajustes | Categorías, subcategorías, ubicaciones, unidades de medida, tipos de documento, IVA y datos del negocio |
 | Escáner móvil | Envía el código al PC en tiempo real; los folios `T-xxxxxx` abren el comprobante |
 
 ## Configuración
@@ -87,7 +87,6 @@ Los scripts de corrección de esquema están en [`sql/`](sql/). Hay que ejecutar
 
 ## Pendientes sugeridos
 
-- Datos fiscales del negocio en el ticket (nombre, RIF/NIT, dirección, logo).
 - Descuentos por línea o por venta.
 - Modo offline / PWA para seguir vendiendo sin internet.
 - Usuarios con login y roles en lugar del usuario fijo "Vendedor Demo".

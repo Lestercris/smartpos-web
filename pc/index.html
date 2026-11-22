@@ -7,8 +7,8 @@
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://cdn.sheetjs.com/xlsx-0.20.0/package/dist/xlsx.full.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.6/dist/JsBarcode.all.min.js"></script>
-    <link rel="stylesheet" href="css/styles.css?v=20261122i">
-    <link rel="stylesheet" href="modulos/ticket/ticket.css?v=20261122i">
+    <link rel="stylesheet" href="css/styles.css?v=20261122j">
+    <link rel="stylesheet" href="modulos/ticket/ticket.css?v=20261122j">
 </head>
 <body>
     <header class="app-header">
@@ -315,6 +315,16 @@
                             <p class="iva-ayuda">Se aplica solo a los productos marcados como <b>«Paga IVA»</b>.</p>
                         </div>
                         <div class="card-inner">
+                            <h3>Mi negocio</h3>
+                            <div class="form-field mb-20"><label>Nombre</label><input type="text" id="negocioNombre" placeholder="Mi tienda"></div>
+                            <div class="form-field mb-20"><label>RIF / NIT / DNI</label><input type="text" id="negocioDocumento" placeholder="J-12345678-9"></div>
+                            <div class="form-field mb-20"><label>Dirección</label><input type="text" id="negocioDireccion" placeholder="Calle, número, ciudad"></div>
+                            <div class="form-field mb-20"><label>Teléfono</label><input type="text" id="negocioTelefono" placeholder="+58 000 000 0000"></div>
+                            <div class="form-field mb-20"><label>Logo</label><input type="file" id="negocioLogo" accept="image/*" class="input-file"></div>
+                            <button class="btn btn-primary" onclick="guardarNegocio()">Guardar datos</button>
+                            <p class="iva-ayuda">Estos datos salen en la cabecera del ticket.</p>
+                        </div>
+                        <div class="card-inner">
                             <h3>Categorías</h3>
                             <div class="input-row mb-20"><input type="text" id="newCatNombre" placeholder="Nueva categoría"><button class="btn btn-primary" onclick="guardarCategoria()">+</button></div>
                             <ul id="listaCategorias" class="list-group"></ul>
@@ -531,10 +541,10 @@
 
     </main>
 
-    <script src="js/db.js?v=20261122i"></script>
-    <script src="js/pos.js?v=20261122i"></script>
-    <script src="js/realtime.js?v=20261122i"></script>
-    <script src="modulos/ticket/ticket.js?v=20261122i"></script>
-    <script src="js/ventas.js?v=20261122i"></script>
+    <script src="js/db.js?v=20261122j"></script>
+    <script src="js/pos.js?v=20261122j"></script>
+    <script src="js/realtime.js?v=20261122j"></script>
+    <script src="modulos/ticket/ticket.js?v=20261122j"></script>
+    <script src="js/ventas.js?v=20261122j"></script>
 </body>
 </html>

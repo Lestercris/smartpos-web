@@ -54,6 +54,13 @@
 .ticket-center { text-align: center; }
 .ticket-receipt h3 { margin: 0 0 5px 0; font-size: 16px; }
 .ticket-receipt p { margin: 2px 0; }
+.ticket-logo {
+    max-width: 100%;
+    max-height: 60px;
+    object-fit: contain;
+    display: block;
+    margin: 0 auto 6px;
+}
 
 .ticket-info { margin: 15px 0; font-size: 12px; }
 

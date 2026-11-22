@@ -21,30 +21,110 @@ document.addEventListener('DOMContentLoaded', () => {
     cargarPromociones();
     cargarClientesVenta();
 
-    // IVA guardado en la base (editable desde Ajustes)
+    // Datos del negocio para el ticket (se guardan en smartpos_config)
+    const NEGOCIO = { nombre: 'SmartPOS', documento: '', direccion: '', telefono: '', logo: '' };
+    window.SMARTPOS_NEGOCIO = NEGOCIO;
+
+    // IVA y datos del negocio guardados en la base (editables desde Ajustes)
     async function cargarConfiguracion() {
         try {
             const { data, error } = await supabaseClient
                 .from('smartpos_config')
-                .select('valor')
-                .eq('clave', 'iva_rate')
-                .limit(1);
+                .select('*');
 
-            if (error || !data || data.length === 0) return;
+            if (error || !data) return;
 
-            const rate = parseFloat(data[0].valor);
-            if (isNaN(rate) || rate < 0 || rate > 1) return;
+            const valores = {};
+            data.forEach(fila => { valores[fila.clave] = fila.valor; });
 
-            IVA_RATE = rate;
-            if (typeof SMARTPOS_CONFIG !== 'undefined') SMARTPOS_CONFIG.IVA_RATE = rate;
+            const rate = parseFloat(valores.iva_rate);
+            if (!isNaN(rate) && rate >= 0 && rate <= 1) {
+                IVA_RATE = rate;
+                if (typeof SMARTPOS_CONFIG !== 'undefined') SMARTPOS_CONFIG.IVA_RATE = rate;
 
-            const input = document.getElementById('ivaPorcentaje');
-            if (input) input.value = String(Number((rate * 100).toFixed(2)));
+                const input = document.getElementById('ivaPorcentaje');
+                if (input) input.value = String(Number((rate * 100).toFixed(2)));
+            }
+
+            NEGOCIO.nombre = valores.negocio_nombre || 'SmartPOS';
+            NEGOCIO.documento = valores.negocio_documento || '';
+            NEGOCIO.direccion = valores.negocio_direccion || '';
+            NEGOCIO.telefono = valores.negocio_telefono || '';
+            NEGOCIO.logo = valores.negocio_logo || '';
+
+            llenarFormularioNegocio();
             if (todosLosProductos.length) filtrarProductos();
         } catch (err) {
-            console.warn('No se pudo cargar la configuración del IVA:', err);
+            console.warn('No se pudo cargar la configuración:', err);
         }
     }
+
+    function llenarFormularioNegocio() {
+        const campos = {
+            negocioNombre: NEGOCIO.nombre,
+            negocioDocumento: NEGOCIO.documento,
+            negocioDireccion: NEGOCIO.direccion,
+            negocioTelefono: NEGOCIO.telefono
+        };
+
+        Object.keys(campos).forEach(id => {
+            const campo = document.getElementById(id);
+            if (campo) campo.value = campos[id] || '';
+        });
+    }
+
+    window.guardarNegocio = async function () {
+        const nombre = document.getElementById('negocioNombre').value.trim() || 'SmartPOS';
+        const documento = document.getElementById('negocioDocumento').value.trim();
+        const direccion = document.getElementById('negocioDireccion').value.trim();
+        const telefono = document.getElementById('negocioTelefono').value.trim();
+        const archivo = document.getElementById('negocioLogo').files[0];
+
+        try {
+            let logo = NEGOCIO.logo || '';
+
+            if (archivo) {
+                const extension = archivo.name.split('.').pop();
+                const nombreArchivo = `logo-${Date.now()}.${extension}`;
+
+                const { error: errorSubida } = await supabaseClient.storage
+                    .from('productos-imagenes')
+                    .upload(nombreArchivo, archivo);
+                if (errorSubida) throw errorSubida;
+
+                const { data: url } = supabaseClient.storage
+                    .from('productos-imagenes')
+                    .getPublicUrl(nombreArchivo);
+                logo = url.publicUrl;
+            }
+
+            const filas = [
+                { clave: 'negocio_nombre', valor: nombre },
+                { clave: 'negocio_documento', valor: documento },
+                { clave: 'negocio_direccion', valor: direccion },
+                { clave: 'negocio_telefono', valor: telefono },
+                { clave: 'negocio_logo', valor: logo }
+            ];
+
+            const { error } = await supabaseClient
+                .from('smartpos_config')
+                .upsert(filas, { onConflict: 'clave' });
+            if (error) throw error;
+
+            NEGOCIO.nombre = nombre;
+            NEGOCIO.documento = documento;
+            NEGOCIO.direccion = direccion;
+            NEGOCIO.telefono = telefono;
+            NEGOCIO.logo = logo;
+
+            const inputLogo = document.getElementById('negocioLogo');
+            if (inputLogo) inputLogo.value = '';
+
+            mostrarNotificacion('Datos del negocio guardados', 'success');
+        } catch (err) {
+            mostrarNotificacion('No se pudo guardar. ' + mensajeError(err), 'error');
+        }
+    };
 
     window.guardarIva = async function () {
         const valor = parseFloat(document.getElementById('ivaPorcentaje').value);

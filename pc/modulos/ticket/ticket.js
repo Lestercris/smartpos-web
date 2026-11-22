@@ -31,6 +31,30 @@ const moduloTicket = {
     },
 
     mostrar: function(venta) {
+        // Datos del negocio en la cabecera
+        const negocio = window.SMARTPOS_NEGOCIO || {};
+        document.getElementById('tk-negocio').textContent = negocio.nombre || 'SmartPOS';
+
+        const logo = document.getElementById('tk-logo');
+        if (negocio.logo) {
+            logo.src = negocio.logo;
+            logo.style.display = 'block';
+        } else {
+            logo.removeAttribute('src');
+            logo.style.display = 'none';
+        }
+
+        [
+            ['tk-negocio-doc', negocio.documento],
+            ['tk-negocio-dir', negocio.direccion],
+            ['tk-negocio-tel', negocio.telefono]
+        ].forEach(([id, valor]) => {
+            const el = document.getElementById(id);
+            if (!el) return;
+            el.textContent = valor || '';
+            el.style.display = valor ? 'block' : 'none';
+        });
+
         // 1. Llenar los datos básicos
         document.getElementById('tk-id').textContent = String(venta.id).padStart(6, '0');
         
