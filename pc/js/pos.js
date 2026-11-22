@@ -704,21 +704,26 @@ document.addEventListener('DOMContentLoaded', () => {
             window.cerrarModalCobro();
 
             if (typeof moduloTicket !== 'undefined') {
-                moduloTicket.mostrar({
-                    id: data.venta_id,
-                    usuario: 'Vendedor Demo',
-                    items: items.map(item => ({
-                        ...item,
-                        nombre: item.descuento ? `${item.nombre} (-${item.descuento}%)` : item.nombre
-                    })),
-                    subtotal,
-                    iva,
-                    total,
-                    metodo_pago: metodoPago,
-                    monto_recibido: recibido,
-                    vuelto,
-                    cliente: clienteNombre
-                });
+                try {
+                    moduloTicket.mostrar({
+                        id: data.venta_id,
+                        usuario: 'Vendedor Demo',
+                        items: items.map(item => ({
+                            ...item,
+                            nombre: item.descuento ? `${item.nombre} (-${item.descuento}%)` : item.nombre
+                        })),
+                        subtotal,
+                        iva,
+                        total,
+                        metodo_pago: metodoPago,
+                        monto_recibido: recibido,
+                        vuelto,
+                        cliente: clienteNombre
+                    });
+                } catch (errTicket) {
+                    // La venta ya está guardada: un fallo del ticket no debe parecer un cobro fallido
+                    console.warn('La venta se guardó, pero no se pudo mostrar el ticket:', errTicket);
+                }
             }
             if (!document.getElementById('admin-view').classList.contains('hidden')) cargarProductosAdmin();
         } catch (err) {

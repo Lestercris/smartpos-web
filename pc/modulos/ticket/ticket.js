@@ -4,7 +4,7 @@ const moduloTicket = {
         const contenedor = document.createElement('div');
         contenedor.id = 'contenedor-ticket';
         
-        fetch('modulos/ticket/ticket.html')
+        fetch('modulos/ticket/ticket.html', { cache: 'no-store' })
             .then(res => res.text())
             .then(html => {
                 contenedor.innerHTML = html;
@@ -33,15 +33,23 @@ const moduloTicket = {
     mostrar: function(venta) {
         // Datos del negocio en la cabecera
         const negocio = window.SMARTPOS_NEGOCIO || {};
-        document.getElementById('tk-negocio').textContent = negocio.nombre || 'SmartPOS';
+        const ponerTexto = (id, texto) => {
+            const el = document.getElementById(id);
+            if (el) el.textContent = texto || '';
+            return el;
+        };
+
+        ponerTexto('tk-negocio', negocio.nombre || 'SmartPOS');
 
         const logo = document.getElementById('tk-logo');
-        if (negocio.logo) {
-            logo.src = negocio.logo;
-            logo.style.display = 'block';
-        } else {
-            logo.removeAttribute('src');
-            logo.style.display = 'none';
+        if (logo) {
+            if (negocio.logo) {
+                logo.src = negocio.logo;
+                logo.style.display = 'block';
+            } else {
+                logo.removeAttribute('src');
+                logo.style.display = 'none';
+            }
         }
 
         [
@@ -49,10 +57,8 @@ const moduloTicket = {
             ['tk-negocio-dir', negocio.direccion],
             ['tk-negocio-tel', negocio.telefono]
         ].forEach(([id, valor]) => {
-            const el = document.getElementById(id);
-            if (!el) return;
-            el.textContent = valor || '';
-            el.style.display = valor ? 'block' : 'none';
+            const el = ponerTexto(id, valor);
+            if (el) el.style.display = valor ? 'block' : 'none';
         });
 
         // 1. Llenar los datos básicos
