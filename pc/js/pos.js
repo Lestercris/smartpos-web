@@ -313,7 +313,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     : `<div class="img-thumbnail" style="background:#e2e8f0;"></div>`;
                 tdImg.onclick = () => verProducto(prod.id);
                 tr.innerHTML = `
-                    <td>${prod.codigo}</td><td>${prod.nombre}</td><td>${prod.categorias ? prod.categorias.nombre : '-'}</td><td>${prod.unidades_medida ? prod.unidades_medida.abreviatura : '-'}</td><td>${prod.stock_minimo || 0}</td><td style="font-weight:bold; color:${prod.stock <= prod.stock_minimo ? 'red' : 'green'}">${prod.stock}</td><td>$${pC.toFixed(2)}</td><td>$${pV.toFixed(2)}</td><td style="color: ${prod.aplica_iva ? '#16a34a' : '#dc2626'}; font-weight:bold;">${prod.aplica_iva ? 'Sí' : 'No'}</td><td>$${margen.toFixed(2)}</td><td>${pct}%</td><td>${prod.proveedores ? prod.proveedores.nombre : '-'}</td><td class="td-acciones"><button class="btn-icon btn-ver" title="Ver y editar" onclick="verProducto(${prod.id})">✏️</button><button class="btn-icon btn-danger" title="Eliminar" onclick="eliminarProducto(${prod.id})">🗑️</button></td>`;
+                    <td>${prod.codigo}</td><td>${prod.nombre}</td><td>${prod.categorias ? prod.categorias.nombre : '-'}</td><td>${prod.unidades_medida ? prod.unidades_medida.abreviatura : '-'}</td><td>${prod.stock_minimo || 0}</td><td style="font-weight:bold; color:${prod.stock <= prod.stock_minimo ? 'red' : 'green'}">${prod.stock}</td><td>$${pC.toFixed(2)}</td><td>$${pV.toFixed(2)}</td><td style="color: ${prod.aplica_iva ? '#16a34a' : '#dc2626'}; font-weight:bold;">${prod.aplica_iva ? 'Sí' : 'No'}</td><td>$${margen.toFixed(2)}</td><td>${pct}%</td><td>${prod.proveedores ? prod.proveedores.nombre : '-'}</td><td class="td-acciones"><button class="btn-icon btn-stock" title="Entrada / salida de stock" onclick="abrirModalStock(${prod.id})">📦</button><button class="btn-icon btn-ver" title="Ver y editar" onclick="verProducto(${prod.id})">✏️</button><button class="btn-icon btn-danger" title="Eliminar" onclick="eliminarProducto(${prod.id})">🗑️</button></td>`;
                 tr.insertBefore(tdImg, tr.firstChild); tbody.appendChild(tr);
             });
         }
@@ -379,6 +379,13 @@ document.addEventListener('DOMContentLoaded', () => {
     // ==================== VER / EDITAR PRODUCTO ====================
     let productoEditando = null;
     let imagenQuitada = false;
+    let modoDuplicar = false;
+
+    function escaparTexto(texto) {
+        return String(texto == null ? '' : texto)
+            .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+    }
 
     function llenarSelect(id, items, valor, texto) {
         const sel = document.getElementById(id);
@@ -438,8 +445,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
         productoEditando = prod;
         imagenQuitada = false;
+        modoDuplicar = false;
 
         document.getElementById('prodModalTitulo').textContent = 'Ver y editar producto';
+        const btnDuplicar = document.getElementById('btnDuplicarProducto');
+        if (btnDuplicar) btnDuplicar.style.display = 'inline-flex';
         document.getElementById('prodNombre').value = prod.nombre || '';
         document.getElementById('prodCodigo').value = prod.codigo || '';
         document.getElementById('prodPrecioCompra').value = prod.precio_compra != null ? prod.precio_compra : 0;
@@ -460,6 +470,24 @@ document.addEventListener('DOMContentLoaded', () => {
         document.getElementById('modalProducto').classList.remove('hidden');
     };
 
+    window.duplicarProducto = function () {
+        if (!productoEditando) return;
+
+        modoDuplicar = true;
+        document.getElementById('prodModalTitulo').textContent = 'Duplicar producto';
+        document.getElementById('prodNombre').value = (productoEditando.nombre || '') + ' (copia)';
+        document.getElementById('prodCodigo').value = '';
+        document.getElementById('prodStock').value = 0;
+
+        const btnDuplicar = document.getElementById('btnDuplicarProducto');
+        if (btnDuplicar) btnDuplicar.style.display = 'none';
+
+        const campoCodigo = document.getElementById('prodCodigo');
+        if (campoCodigo.focus) campoCodigo.focus();
+
+        mostrarNotificacion('Ponle un código nuevo y pulsa Guardar', 'success');
+    };
+
     window.quitarImagenProducto = function () {
         imagenQuitada = true;
         document.getElementById('prodNuevaImagen').value = '';
@@ -469,6 +497,7 @@ document.addEventListener('DOMContentLoaded', () => {
     window.cerrarModalProducto = function () {
         document.getElementById('modalProducto').classList.add('hidden');
         productoEditando = null;
+        modoDuplicar = false;
     };
 
     window.guardarEdicionProducto = async function () {
@@ -505,7 +534,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 imagenUrl = urlData.publicUrl;
             }
 
-            const { error } = await supabaseClient.from('productos').update({
+            const datos = {
                 nombre,
                 codigo,
                 precio,
@@ -519,11 +548,18 @@ document.addEventListener('DOMContentLoaded', () => {
                 ubicacion_id: document.getElementById('prodUbicacion').value || null,
                 aplica_iva: document.getElementById('prodAplicaIva').checked,
                 imagen_url: imagenUrl
-            }).eq('id', productoEditando.id);
+            };
+
+            let error;
+            if (modoDuplicar) {
+                ({ error } = await supabaseClient.from('productos').insert([datos]));
+            } else {
+                ({ error } = await supabaseClient.from('productos').update(datos).eq('id', productoEditando.id));
+            }
 
             if (error) throw error;
 
-            mostrarNotificacion('Producto guardado', 'success');
+            mostrarNotificacion(modoDuplicar ? 'Producto duplicado' : 'Producto guardado', 'success');
             cerrarModalProducto();
             cargarProductosAdmin();
         } catch (err) {
@@ -542,6 +578,138 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         });
     }
+
+    // ==================== ENTRADA / SALIDA DE STOCK ====================
+    let stockProducto = null;
+    let tipoStock = 'ENTRADA';
+
+    function actualizarResumenStock() {
+        const resumen = document.getElementById('stockResumen');
+        if (!resumen || !stockProducto) return;
+
+        const cantidad = parseInt(document.getElementById('stockCantidad').value) || 0;
+        const base = Number(stockProducto.stock) || 0;
+        const despues = tipoStock === 'ENTRADA' ? base + cantidad : base - cantidad;
+
+        resumen.className = 'stock-resumen' + (despues < 0 ? ' stock-error' : '');
+        resumen.innerHTML = `Ahora hay <b>${base}</b> · quedarán <b>${despues}</b>`;
+    }
+
+    window.elegirTipoStock = function (tipo) {
+        tipoStock = tipo;
+
+        document.getElementById('stockTipoEntrada').classList.toggle('activo', tipo === 'ENTRADA');
+        document.getElementById('stockTipoSalida').classList.toggle('activo', tipo === 'SALIDA');
+        document.getElementById('stockCantidadLabel').textContent = tipo === 'ENTRADA'
+            ? '¿Cuántas unidades entran?'
+            : '¿Cuántas unidades salen?';
+
+        actualizarResumenStock();
+    };
+
+    window.abrirModalStock = function (id) {
+        const prod = todosLosProductos.find(p => p.id === id);
+        if (!prod) return mostrarNotificacion('No se encontró el producto', 'error');
+
+        stockProducto = prod;
+        document.getElementById('stockProducto').textContent = prod.nombre;
+        document.getElementById('stockCantidad').value = '';
+        document.getElementById('stockMotivo').value = '';
+        document.getElementById('stockHistorial').innerHTML = '';
+        window.elegirTipoStock('ENTRADA');
+        actualizarResumenStock();
+        document.getElementById('modalStock').classList.remove('hidden');
+        cargarHistorialStock(prod.id);
+    };
+
+    window.cerrarModalStock = function () {
+        document.getElementById('modalStock').classList.add('hidden');
+        stockProducto = null;
+    };
+
+    async function cargarHistorialStock(productoId) {
+        const cont = document.getElementById('stockHistorial');
+        if (!cont) return;
+        cont.innerHTML = '<p class="stock-vacio">Cargando historial...</p>';
+
+        const { data, error } = await supabaseClient
+            .from('movimientos_stock')
+            .select('tipo, cantidad, motivo, created_at')
+            .eq('producto_id', productoId)
+            .order('created_at', { ascending: false })
+            .limit(5);
+
+        if (error) {
+            cont.innerHTML = '<p class="stock-vacio">Historial no disponible todavía</p>';
+            return;
+        }
+        if (!data || data.length === 0) {
+            cont.innerHTML = '<p class="stock-vacio">Sin movimientos todavía</p>';
+            return;
+        }
+
+        cont.innerHTML = '<h4>Últimos movimientos</h4>' + data.map(mov => `
+            <div class="movimiento">
+                <span class="${mov.tipo === 'ENTRADA' ? 'mov-entrada' : 'mov-salida'}">${mov.tipo === 'ENTRADA' ? '+' : '−'}${mov.cantidad}</span>
+                <span class="mov-motivo">${mov.motivo ? escaparTexto(mov.motivo) : 'Sin motivo'}</span>
+                <span class="mov-fecha">${new Date(mov.created_at).toLocaleString()}</span>
+            </div>`).join('');
+    }
+
+    window.guardarMovimientoStock = async function () {
+        if (!stockProducto) return;
+
+        const cantidad = parseInt(document.getElementById('stockCantidad').value) || 0;
+        if (cantidad < 1) return mostrarNotificacion('Escribe cuántas unidades', 'error');
+
+        const motivo = document.getElementById('stockMotivo').value.trim();
+        const id = stockProducto.id;
+
+        try {
+            mostrarNotificacion('Guardando...', 'success');
+
+            const { data: actual, error: errorLectura } = await supabaseClient
+                .from('productos')
+                .select('stock')
+                .eq('id', id)
+                .single();
+            if (errorLectura) throw errorLectura;
+
+            const fila = Array.isArray(actual) ? actual[0] : actual;
+            const stockAnterior = Number(fila && fila.stock != null ? fila.stock : stockProducto.stock) || 0;
+            const stockNuevo = tipoStock === 'ENTRADA' ? stockAnterior + cantidad : stockAnterior - cantidad;
+
+            if (stockNuevo < 0) {
+                return mostrarNotificacion(`Solo hay ${stockAnterior} unidades`, 'error');
+            }
+
+            const { error: errorStock } = await supabaseClient
+                .from('productos')
+                .update({ stock: stockNuevo })
+                .eq('id', id);
+            if (errorStock) throw errorStock;
+
+            const { error: errorMovimiento } = await supabaseClient.from('movimientos_stock').insert([{
+                producto_id: id,
+                tipo: tipoStock,
+                cantidad,
+                stock_anterior: stockAnterior,
+                stock_nuevo: stockNuevo,
+                motivo: motivo || null,
+                usuario: 'Vendedor Demo'
+            }]);
+            if (errorMovimiento) console.warn('No se pudo guardar el movimiento:', errorMovimiento.message);
+
+            mostrarNotificacion(`Stock: ${stockAnterior} → ${stockNuevo}`, 'success');
+            cerrarModalStock();
+            cargarProductosAdmin();
+        } catch (err) {
+            mostrarNotificacion('No se pudo guardar. ' + mensajeError(err), 'error');
+        }
+    };
+
+    const inputStockCantidad = document.getElementById('stockCantidad');
+    if (inputStockCantidad) inputStockCantidad.addEventListener('input', actualizarResumenStock);
 
     // ==================== GESTIÓN DE CLIENTES ====================
     window.guardarCliente = async function() {

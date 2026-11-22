@@ -396,7 +396,39 @@
 
                 <div class="modal-actions">
                     <button class="btn btn-secondary" onclick="cerrarModalProducto()">Cancelar</button>
+                    <button class="btn btn-secondary" id="btnDuplicarProducto" onclick="duplicarProducto()">⧉ Duplicar</button>
                     <button class="btn btn-primary" onclick="guardarEdicionProducto()">Guardar cambios</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- MODAL DE ENTRADA / SALIDA DE STOCK -->
+        <div class="modal-overlay hidden" id="modalStock">
+            <div class="modal-box" style="max-width: 520px;">
+                <h2>Entrada / salida de stock</h2>
+                <p class="stock-producto" id="stockProducto"></p>
+
+                <div class="stock-tipos">
+                    <button type="button" class="stock-tipo activo" id="stockTipoEntrada" onclick="elegirTipoStock('ENTRADA')">➕ Entrada</button>
+                    <button type="button" class="stock-tipo" id="stockTipoSalida" onclick="elegirTipoStock('SALIDA')">➖ Salida</button>
+                </div>
+
+                <div class="form-field mb-20">
+                    <label id="stockCantidadLabel">¿Cuántas unidades entran?</label>
+                    <input type="number" id="stockCantidad" min="1" placeholder="0">
+                </div>
+
+                <div class="form-field mb-20">
+                    <label>Motivo (opcional)</label>
+                    <input type="text" id="stockMotivo" placeholder="Ej: compra a proveedor, merma, rotura">
+                </div>
+
+                <div class="stock-resumen" id="stockResumen"></div>
+                <div class="stock-historial" id="stockHistorial"></div>
+
+                <div class="modal-actions">
+                    <button class="btn btn-secondary" onclick="cerrarModalStock()">Cancelar</button>
+                    <button class="btn btn-primary" onclick="guardarMovimientoStock()">Guardar</button>
                 </div>
             </div>
         </div>
