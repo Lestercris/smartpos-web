@@ -30,7 +30,11 @@ document.addEventListener('DOMContentLoaded', () => {
     // Guarda el catálogo en el navegador para poder vender sin conexión
     async function cargarCatalogoOffline() {
         try {
-            const { data } = await supabaseClient.from('productos').select('*').order('nombre');
+            const { data } = await supabaseClient
+                .from('productos')
+                .select(`*, categorias (nombre), proveedores (nombre), unidades_medida (abreviatura)`)
+                .order('nombre');
+
             if (data) await Offline.guardarProductos(data);
         } catch (err) {
             /* sin conexión: se usa lo que ya estuviera guardado */
@@ -475,18 +479,45 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     async function cargarDatosIniciales() {
-        const [resCat, resProv, resUbi, resUMed, resTipoDoc] = await Promise.all([
-            supabaseClient.from('categorias').select('*').order('nombre'),
-            supabaseClient.from('proveedores').select('*').order('nombre'),
-            supabaseClient.from('ubicaciones').select('*').order('nombre'),
-            supabaseClient.from('unidades_medida').select('*').order('nombre'),
-            supabaseClient.from('tipos_documento').select('*').order('abreviatura')
-        ]);
-        listaCategorias = resCat.data || []; 
-        listaProveedores = resProv.data || []; 
-        listaUbicaciones = resUbi.data || []; 
-        listaUMedidas = resUMed.data || []; 
-        listaTiposDoc = resTipoDoc.data || [];
+        try {
+            const [resCat, resProv, resUbi, resUMed, resTipoDoc] = await Promise.all([
+                supabaseClient.from('categorias').select('*').order('nombre'),
+                supabaseClient.from('proveedores').select('*').order('nombre'),
+                supabaseClient.from('ubicaciones').select('*').order('nombre'),
+                supabaseClient.from('unidades_medida').select('*').order('nombre'),
+                supabaseClient.from('tipos_documento').select('*').order('abreviatura')
+            ]);
+
+            if (resCat.error) throw resCat.error;
+
+            listaCategorias = resCat.data || [];
+            listaProveedores = resProv.data || [];
+            listaUbicaciones = resUbi.data || [];
+            listaUMedidas = resUMed.data || [];
+            listaTiposDoc = resTipoDoc.data || [];
+
+            if (typeof Offline !== 'undefined') {
+                await Offline.guardarDatos('catalogos', {
+                    categorias: listaCategorias,
+                    proveedores: listaProveedores,
+                    ubicaciones: listaUbicaciones,
+                    unidades: listaUMedidas,
+                    tipos: listaTiposDoc
+                });
+            }
+        } catch (err) {
+            if (typeof Offline !== 'undefined') {
+                const cache = await Offline.obtenerDatos('catalogos');
+                if (cache) {
+                    listaCategorias = cache.categorias || [];
+                    listaProveedores = cache.proveedores || [];
+                    listaUbicaciones = cache.ubicaciones || [];
+                    listaUMedidas = cache.unidades || [];
+                    listaTiposDoc = cache.tipos || [];
+                }
+            }
+        }
+
         llenarSelectsFormulario();
     }
 
@@ -1589,6 +1620,16 @@ document.addEventListener('DOMContentLoaded', () => {
         return { ok: true };
     }
     // ==================== CLIENTES EN LA VENTA ====================
+    function llenarSelectClientesVenta() {
+        const select = document.getElementById('cobroCliente');
+        if (!select) return;
+
+        const elegido = select.value;
+        select.innerHTML = '<option value="">Consumidor final</option>' +
+            listaClientesVenta.map(c => `<option value="${c.id}">${escaparTexto(c.nombre)}</option>`).join('');
+        select.value = elegido;
+    }
+
     async function cargarClientesVenta() {
         try {
             const { data, error } = await supabaseClient
@@ -1596,19 +1637,18 @@ document.addEventListener('DOMContentLoaded', () => {
                 .select('id, nombre')
                 .order('nombre');
 
-            if (error) return;
-            listaClientesVenta = data || [];
+            if (error) throw error;
 
-            const select = document.getElementById('cobroCliente');
-            if (select) {
-                const elegido = select.value;
-                select.innerHTML = '<option value="">Consumidor final</option>' +
-                    listaClientesVenta.map(c => `<option value="${c.id}">${escaparTexto(c.nombre)}</option>`).join('');
-                select.value = elegido;
-            }
+            listaClientesVenta = data || [];
+            if (typeof Offline !== 'undefined') Offline.guardarDatos('clientes', listaClientesVenta);
         } catch (err) {
-            console.warn('No se pudieron cargar los clientes:', err);
+            if (typeof Offline !== 'undefined') {
+                const guardados = await Offline.obtenerDatos('clientes');
+                if (guardados) listaClientesVenta = guardados;
+            }
         }
+
+        llenarSelectClientesVenta();
     }
 
     // ==================== GESTIÓN DE CLIENTES ====================
