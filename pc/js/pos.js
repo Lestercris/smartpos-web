@@ -211,6 +211,12 @@ document.addEventListener('DOMContentLoaded', () => {
         return ` <span class="badge-promo">-${item.descuento}%</span>`;
     }
 
+    function fechaCorta(valor) {
+        if (!valor) return '-';
+        const fecha = new Date(String(valor) + 'T00:00:00');
+        return isNaN(fecha.getTime()) ? String(valor) : fecha.toLocaleDateString();
+    }
+
     function renderPromos() {
         const tbody = document.getElementById('promoTableBody');
         if (!tbody) return;
@@ -227,20 +233,23 @@ document.addEventListener('DOMContentLoaded', () => {
                 ? ((todosLosProductos.find(p => p.id === promo.producto_id) || {}).nombre || 'Producto')
                 : 'Todos los productos';
 
-            const vigente = promo.activa !== false
-                && (!promo.fecha_inicio || String(promo.fecha_inicio) <= hoy)
-                && (!promo.fecha_fin || String(promo.fecha_fin) >= hoy);
+            const programada = promo.fecha_inicio && String(promo.fecha_inicio) > hoy;
+            const vencida = promo.fecha_fin && String(promo.fecha_fin) < hoy;
 
             const estado = promo.activa === false
                 ? '<span class="badge-estado badge-anulada">Pausada</span>'
-                : (vigente ? '<span class="badge-estado badge-emitida">Activa</span>' : '<span class="badge-estado badge-devuelta">Vencida</span>');
+                : (programada
+                    ? '<span class="badge-estado badge-devuelta">Programada</span>'
+                    : (vencida
+                        ? '<span class="badge-estado badge-anulada">Vencida</span>'
+                        : '<span class="badge-estado badge-emitida">Activa</span>'));
 
             return `<tr>
                 <td>${escaparTexto(promo.nombre)}</td>
                 <td>${escaparTexto(producto)}</td>
                 <td class="td-num">${promo.tipo === 'NXM' ? `${promo.lleva}x${promo.paga}` : `${Number(promo.descuento)}%`}</td>
-                <td>${promo.fecha_inicio || '-'}</td>
-                <td>${promo.fecha_fin || '-'}</td>
+                <td>${fechaCorta(promo.fecha_inicio)}</td>
+                <td>${fechaCorta(promo.fecha_fin)}</td>
                 <td>${estado}</td>
                 <td class="td-acciones">
                     <button class="btn-icon btn-ver" title="${promo.activa === false ? 'Activar' : 'Pausar'}" onclick="alternarPromo(${promo.id})">${promo.activa === false ? '▶️' : '⏸️'}</button>
